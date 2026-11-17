@@ -1,0 +1,214 @@
+{
+  "model_version": "v1.0.0-presowing",
+  "best_algorithm": "Random Forest Regressor",
+  "trained_date": "2026-11-16 16:52:02",
+  "training_records": 53827,
+  "test_records": 10367,
+  "validation_strategy": "Temporal Out-of-Time Split (1997-2011 Train, 2012-2015 Test)",
+  "models_comparison": {
+    "Linear Regression (Baseline)": {
+      "r2_score": 0.9106,
+      "mae_kg_ha": 1957.48,
+      "rmse_kg_ha": 6174.8,
+      "mape_pct": 45.28,
+      "training_time_seconds": 0.12
+    },
+    "Random Forest Regressor": {
+      "r2_score": 0.9073,
+      "mae_kg_ha": 1814.14,
+      "rmse_kg_ha": 6289.14,
+      "mape_pct": 31.18,
+      "training_time_seconds": 3.48
+    },
+    "XGBoost Regressor": {
+      "r2_score": 0.898,
+      "mae_kg_ha": 1837.2,
+      "rmse_kg_ha": 6596.51,
+      "mape_pct": 31.83,
+      "training_time_seconds": 3.83
+    }
+  },
+  "crop_performance": {
+    "Cotton": {
+      "test_samples": 629,
+      "r2_score": 0.4914,
+      "mae_kg_ha": 568.61,
+      "rmse_kg_ha": 796.82,
+      "mape_pct": 41.99
+    },
+    "Groundnut": {
+      "test_samples": 1410,
+      "r2_score": 0.578,
+      "mae_kg_ha": 327.05,
+      "rmse_kg_ha": 459.76,
+      "mape_pct": 30.09
+    },
+    "Maize": {
+      "test_samples": 2426,
+      "r2_score": 0.522,
+      "mae_kg_ha": 688.63,
+      "rmse_kg_ha": 1021.71,
+      "mape_pct": 32.24
+    },
+    "Ragi": {
+      "test_samples": 670,
+      "r2_score": 0.689,
+      "mae_kg_ha": 296.95,
+      "rmse_kg_ha": 438.3,
+      "mape_pct": 27.23
+    },
+    "Rice": {
+      "test_samples": 2467,
+      "r2_score": 0.4923,
+      "mae_kg_ha": 474.45,
+      "rmse_kg_ha": 646.63,
+      "mape_pct": 26.1
+    },
+    "Soybean": {
+      "test_samples": 479,
+      "r2_score": 0.2348,
+      "mae_kg_ha": 326.45,
+      "rmse_kg_ha": 435.4,
+      "mape_pct": 43.14
+    },
+    "Sugarcane": {
+      "test_samples": 1147,
+      "r2_score": 0.4904,
+      "mae_kg_ha": 12450.5,
+      "rmse_kg_ha": 18794.48,
+      "mape_pct": 38.56
+    },
+    "Wheat": {
+      "test_samples": 1139,
+      "r2_score": 0.6939,
+      "mae_kg_ha": 448.86,
+      "rmse_kg_ha": 600.46,
+      "mape_pct": 25.14
+    }
+  },
+  "feature_columns": {
+    "categorical": [
+      "Crop",
+      "State_Name",
+      "Season",
+      "Soil_Type"
+    ],
+    "numerical": [
+      "Area",
+      "Seasonal_Rainfall_mm",
+      "Soil_pH",
+      "Nitrogen_N",
+      "Phosphorus_P",
+      "Potassium_K",
+      "Organic_Carbon_pct",
+      "District_Yield_Mean"
+    ]
+  },
+  "top_shap_features": [
+    {
+      "feature": "num__District_Yield_Mean",
+      "mean_abs_shap": 12361.18
+    },
+    {
+      "feature": "cat__Crop_Sugarcane",
+      "mean_abs_shap": 265.87
+    },
+    {
+      "feature": "num__Potassium_K",
+      "mean_abs_shap": 203.42
+    },
+    {
+      "feature": "cat__Season_Kharif",
+      "mean_abs_shap": 202.27
+    },
+    {
+      "feature": "num__Seasonal_Rainfall_mm",
+      "mean_abs_shap": 176.44
+    },
+    {
+      "feature": "cat__State_Name_Andhra Pradesh",
+      "mean_abs_shap": 138.75
+    },
+    {
+      "feature": "num__Area",
+      "mean_abs_shap": 133.24
+    },
+    {
+      "feature": "num__Organic_Carbon_pct",
+      "mean_abs_shap": 94.89
+    },
+    {
+      "feature": "num__Soil_pH",
+      "mean_abs_shap": 81.35
+    },
+    {
+      "feature": "cat__Crop_Maize",
+      "mean_abs_shap": 69.23
+    },
+    {
+      "feature": "cat__Season_Rabi",
+      "mean_abs_shap": 48.64
+    },
+    {
+      "feature": "cat__Soil_Type_RED",
+      "mean_abs_shap": 44.38
+    },
+    {
+      "feature": "cat__State_Name_Tamil Nadu",
+      "mean_abs_shap": 44.21
+    },
+    {
+      "feature": "cat__Season_Whole Year",
+      "mean_abs_shap": 28.11
+    },
+    {
+      "feature": "num__Nitrogen_N",
+      "mean_abs_shap": 25.04
+    }
+  ],
+  "supported_crops": [
+    "Cotton",
+    "Groundnut",
+    "Maize",
+    "Ragi",
+    "Rice",
+    "Soybean",
+    "Sugarcane",
+    "Wheat"
+  ],
+  "supported_states": [
+    "Andaman and Nicobar Islands",
+    "Andhra Pradesh",
+    "Arunachal Pradesh",
+    "Assam",
+    "Bihar",
+    "Chandigarh",
+    "Chhattisgarh",
+    "Dadra and Nagar Haveli",
+    "Goa",
+    "Gujarat",
+    "Haryana",
+    "Himachal Pradesh",
+    "Jammu and Kashmir",
+    "Jharkhand",
+    "Karnataka",
+    "Kerala",
+    "Madhya Pradesh",
+    "Maharashtra",
+    "Manipur",
+    "Meghalaya",
+    "Mizoram",
+    "Nagaland",
+    "Odisha",
+    "Puducherry",
+    "Punjab",
+    "Rajasthan",
+    "Sikkim",
+    "Tamil Nadu",
+    "Telangana",
+    "Tripura",
+    "Uttar Pradesh",
+    "Uttarakhand",
+    "West Bengal"
+  ]
+}
