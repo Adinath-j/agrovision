@@ -51,10 +51,13 @@ urlpatterns = [
     # Application API Endpoints
     path('api/auth/', include('apps.accounts.urls')),
     path('api/farms/', include('apps.farms.urls')),
+    path('api/v1/farms/', include('apps.farms.urls')),
     path('api/crops/', include('apps.crops.urls')),
     path('api/predictions/', include('apps.predictions.urls')),
     path('api/disease/', include('apps.disease.urls')),
+    path('api/v1/disease/', include('apps.disease.urls')),
     path('api/weather/', include('apps.weather.urls')),
+    path('api/v1/weather/', include('apps.weather.urls')),
     path('api/satellite/', include('apps.satellite.urls')),
     path('api/market/', include('apps.market.urls')),
     path('api/assistant/', include('apps.assistant.urls')),

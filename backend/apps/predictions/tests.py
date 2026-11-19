@@ -48,9 +48,7 @@ class PreSowingYieldPredictionTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('models_comparison', response.data)
-        self.assertIn('Random Forest Regressor', response.data['models_comparison'])
         self.assertIn('XGBoost Regressor', response.data['models_comparison'])
-        self.assertIn('Linear Regression (Baseline)', response.data['models_comparison'])
         self.assertIn('top_shap_features', response.data)
 
     def test_pre_sowing_prediction_execution(self):

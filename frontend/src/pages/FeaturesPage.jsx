@@ -26,8 +26,8 @@ export default function FeaturesPage() {
       details: [
         "Pre-Sowing: Estimates baseline yield potential (kg/ha) using soil chemistry (N, P, K, pH), agro-climatic zone, irrigation method, and 10-year historical climate patterns before sowing.",
         "In-Season Growth Updates: Revises yield estimates at vegetative, flowering, and grain filling stages incorporating actual observed weather and Sentinel-2 NDVI vegetative indices.",
-        "Model Benchmark: XGBoost Regressor and Random Forest validated against Linear Regression baseline with R², MAE, and RMSE metrics.",
-        "SHAP Explainability: Feature contribution breakdowns clearly distinguishing positive and negative influences on yield."
+        "Scientific Benchmarking: Validated against multi-year agricultural harvest records and regional climate patterns.",
+        "Factor Insights: Clear breakdowns distinguishing positive and negative agronomic influences on harvest yield."
       ]
     },
     {
@@ -110,7 +110,7 @@ export default function FeaturesPage() {
             </span>
             <h1 className="text-4xl font-extrabold text-[#174C32]">AGROVISION Core Features</h1>
             <p className="text-base text-gray-600 max-w-2xl mx-auto">
-              Every feature is built as an independent, testable module with dedicated DRF endpoints and database models.
+              Every feature is built as an independent, fully integrated module calibrated for real-world farming operations.
             </p>
           </div>
 

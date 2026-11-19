@@ -39,7 +39,7 @@ const STAGES = [
   { id: 'MATURITY', label: 'Maturity', days: '100–125 DAS', desc: 'Physiological ripening & harvest prep' },
 ];
 
-export default function InSeasonPreviewPage() {
+export default function InSeasonYieldPage() {
   const [farms, setFarms] = useState([]);
   const [crops, setCrops] = useState([]);
   const [selectedFarmId, setSelectedFarmId] = useState('');

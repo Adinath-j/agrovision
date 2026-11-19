@@ -1,89 +1,75 @@
 {
   "model_version": "v1.0.0-presowing",
-  "best_algorithm": "Random Forest Regressor",
-  "trained_date": "2026-11-16 16:52:02",
+  "best_algorithm": "XGBoost Regressor",
+  "trained_date": "2026-11-17 18:57:16",
   "training_records": 53827,
   "test_records": 10367,
   "validation_strategy": "Temporal Out-of-Time Split (1997-2011 Train, 2012-2015 Test)",
   "models_comparison": {
-    "Linear Regression (Baseline)": {
-      "r2_score": 0.9106,
-      "mae_kg_ha": 1957.48,
-      "rmse_kg_ha": 6174.8,
-      "mape_pct": 45.28,
-      "training_time_seconds": 0.12
-    },
-    "Random Forest Regressor": {
-      "r2_score": 0.9073,
-      "mae_kg_ha": 1814.14,
-      "rmse_kg_ha": 6289.14,
-      "mape_pct": 31.18,
-      "training_time_seconds": 3.48
-    },
     "XGBoost Regressor": {
-      "r2_score": 0.898,
-      "mae_kg_ha": 1837.2,
-      "rmse_kg_ha": 6596.51,
-      "mape_pct": 31.83,
-      "training_time_seconds": 3.83
+      "r2_score": 0.9002,
+      "mae_kg_ha": 1822.59,
+      "rmse_kg_ha": 6524.84,
+      "mape_pct": 31.78,
+      "training_time_seconds": 0.56
     }
   },
   "crop_performance": {
     "Cotton": {
       "test_samples": 629,
-      "r2_score": 0.4914,
-      "mae_kg_ha": 568.61,
-      "rmse_kg_ha": 796.82,
-      "mape_pct": 41.99
+      "r2_score": 0.4777,
+      "mae_kg_ha": 585.92,
+      "rmse_kg_ha": 807.52,
+      "mape_pct": 42.83
     },
     "Groundnut": {
       "test_samples": 1410,
-      "r2_score": 0.578,
-      "mae_kg_ha": 327.05,
-      "rmse_kg_ha": 459.76,
-      "mape_pct": 30.09
+      "r2_score": 0.5612,
+      "mae_kg_ha": 330.69,
+      "rmse_kg_ha": 468.83,
+      "mape_pct": 31.13
     },
     "Maize": {
       "test_samples": 2426,
-      "r2_score": 0.522,
-      "mae_kg_ha": 688.63,
-      "rmse_kg_ha": 1021.71,
-      "mape_pct": 32.24
+      "r2_score": 0.4891,
+      "mae_kg_ha": 725.69,
+      "rmse_kg_ha": 1056.28,
+      "mape_pct": 32.77
     },
     "Ragi": {
       "test_samples": 670,
-      "r2_score": 0.689,
-      "mae_kg_ha": 296.95,
-      "rmse_kg_ha": 438.3,
-      "mape_pct": 27.23
+      "r2_score": 0.702,
+      "mae_kg_ha": 304.92,
+      "rmse_kg_ha": 429.05,
+      "mape_pct": 29.41
     },
     "Rice": {
       "test_samples": 2467,
-      "r2_score": 0.4923,
-      "mae_kg_ha": 474.45,
-      "rmse_kg_ha": 646.63,
-      "mape_pct": 26.1
+      "r2_score": 0.4696,
+      "mae_kg_ha": 484.93,
+      "rmse_kg_ha": 660.94,
+      "mape_pct": 26.47
     },
     "Soybean": {
       "test_samples": 479,
-      "r2_score": 0.2348,
-      "mae_kg_ha": 326.45,
-      "rmse_kg_ha": 435.4,
-      "mape_pct": 43.14
+      "r2_score": 0.1515,
+      "mae_kg_ha": 325.44,
+      "rmse_kg_ha": 458.49,
+      "mape_pct": 42.57
     },
     "Sugarcane": {
       "test_samples": 1147,
-      "r2_score": 0.4904,
-      "mae_kg_ha": 12450.5,
-      "rmse_kg_ha": 18794.48,
-      "mape_pct": 38.56
+      "r2_score": 0.4514,
+      "mae_kg_ha": 12409.29,
+      "rmse_kg_ha": 19501.69,
+      "mape_pct": 39.6
     },
     "Wheat": {
       "test_samples": 1139,
-      "r2_score": 0.6939,
-      "mae_kg_ha": 448.86,
-      "rmse_kg_ha": 600.46,
-      "mape_pct": 25.14
+      "r2_score": 0.6955,
+      "mae_kg_ha": 447.35,
+      "rmse_kg_ha": 598.86,
+      "mape_pct": 24.88
     }
   },
   "feature_columns": {
@@ -107,63 +93,63 @@
   "top_shap_features": [
     {
       "feature": "num__District_Yield_Mean",
-      "mean_abs_shap": 12361.18
+      "mean_abs_shap": 9037.84
     },
     {
       "feature": "cat__Crop_Sugarcane",
-      "mean_abs_shap": 265.87
-    },
-    {
-      "feature": "num__Potassium_K",
-      "mean_abs_shap": 203.42
-    },
-    {
-      "feature": "cat__Season_Kharif",
-      "mean_abs_shap": 202.27
-    },
-    {
-      "feature": "num__Seasonal_Rainfall_mm",
-      "mean_abs_shap": 176.44
-    },
-    {
-      "feature": "cat__State_Name_Andhra Pradesh",
-      "mean_abs_shap": 138.75
-    },
-    {
-      "feature": "num__Area",
-      "mean_abs_shap": 133.24
-    },
-    {
-      "feature": "num__Organic_Carbon_pct",
-      "mean_abs_shap": 94.89
-    },
-    {
-      "feature": "num__Soil_pH",
-      "mean_abs_shap": 81.35
-    },
-    {
-      "feature": "cat__Crop_Maize",
-      "mean_abs_shap": 69.23
-    },
-    {
-      "feature": "cat__Season_Rabi",
-      "mean_abs_shap": 48.64
+      "mean_abs_shap": 3539.8
     },
     {
       "feature": "cat__Soil_Type_RED",
-      "mean_abs_shap": 44.38
+      "mean_abs_shap": 642.4
+    },
+    {
+      "feature": "num__Seasonal_Rainfall_mm",
+      "mean_abs_shap": 231.85
+    },
+    {
+      "feature": "cat__State_Name_Andhra Pradesh",
+      "mean_abs_shap": 223.18
+    },
+    {
+      "feature": "cat__Season_Kharif",
+      "mean_abs_shap": 162.44
     },
     {
       "feature": "cat__State_Name_Tamil Nadu",
-      "mean_abs_shap": 44.21
+      "mean_abs_shap": 152.81
+    },
+    {
+      "feature": "cat__State_Name_Odisha",
+      "mean_abs_shap": 149.49
+    },
+    {
+      "feature": "cat__State_Name_Andaman and Nicobar Islands",
+      "mean_abs_shap": 148.67
+    },
+    {
+      "feature": "cat__Crop_Maize",
+      "mean_abs_shap": 135.58
+    },
+    {
+      "feature": "num__Area",
+      "mean_abs_shap": 116.17
+    },
+    {
+      "feature": "num__Potassium_K",
+      "mean_abs_shap": 84.45
     },
     {
       "feature": "cat__Season_Whole Year",
-      "mean_abs_shap": 28.11
+      "mean_abs_shap": 76.91
     },
     {
-      "feature": "num__Nitrogen_N",
-      "mean_abs_shap": 25.04
+      "feature": "cat__State_Name_Madhya Pradesh",
+      "mean_abs_shap": 74.13
+    },
+    {
+      "feature": "num__Organic_Carbon_pct",
+      "mean_abs_shap": 68.87
     }
   ],
   "supported_crops": [

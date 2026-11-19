@@ -26,7 +26,7 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-2 text-xs text-emerald-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>PostgreSQL & DRF Backend Online</span>
+              <span>Cloud Services Online & Synchronized</span>
             </div>
           </div>
 

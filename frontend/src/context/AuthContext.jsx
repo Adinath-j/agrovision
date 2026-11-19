@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       let msg = 'Login failed. Please check credentials.';
       if (!err.response) {
-        msg = 'Backend server unreachable. Please verify Django is running at http://127.0.0.1:8000 (run: cd backend && python manage.py runserver 8000).';
+        msg = 'Server unreachable. Please verify the service is running at http://127.0.0.1:8000.';
       } else if (err.response.data) {
         if (typeof err.response.data === 'string') {
           msg = err.response.data;
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       let errorMsg = 'Registration failed.';
       if (!err.response) {
-        errorMsg = 'Backend server unreachable. Please verify Django is running at http://127.0.0.1:8000 (run: cd backend && python manage.py runserver 8000).';
+        errorMsg = 'Server unreachable. Please verify the service is running at http://127.0.0.1:8000.';
       } else if (err.response.data) {
         if (typeof err.response.data === 'string') {
           errorMsg = err.response.data;

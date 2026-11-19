@@ -19,7 +19,7 @@ import {
 import { jsPDF } from 'jspdf';
 import api from '../../services/api';
 
-export default function ReportsPreviewPage() {
+export default function AnalyticalReportsPage() {
   const [farms, setFarms] = useState([]);
   const [selectedFarmId, setSelectedFarmId] = useState('');
   const [activeTab, setActiveTab] = useState('yield'); // 'yield' | 'audit' | 'archive'
@@ -154,7 +154,7 @@ export default function ReportsPreviewPage() {
       doc.text(`Total Est. Production: ${yieldDossier.yield_intelligence?.total_production_tonnes || 3.7} Tonnes`, 85, 98);
       doc.setFont('helvetica', 'normal');
       doc.text(`Cropping Stage: ${yieldDossier.yield_intelligence?.growth_stage || 'Flowering Stage'}`, 85, 104);
-      doc.text(`Model Algorithm: ${yieldDossier.yield_intelligence?.model_algorithm || 'Random Forest Regressor'}`, 85, 110);
+      doc.text(`Forecast Method: Dual-Stage Agro-Climatic Intelligence`, 85, 110);
       doc.text(
         `Confidence: ${yieldDossier.yield_intelligence?.confidence_score || 92}% (Range: ${yieldDossier.yield_intelligence?.interval_min_kg || 1650} - ${yieldDossier.yield_intelligence?.interval_max_kg || 2050} kg/ha)`,
         85,
@@ -479,7 +479,7 @@ export default function ReportsPreviewPage() {
           {/* Verification Signature & Watermark Footer */}
           <div className="pt-6 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-gray-500">
             <div>
-              <p className="font-semibold text-gray-700">Model Algorithm: {yieldDossier.yield_intelligence.model_algorithm}</p>
+              <p className="font-semibold text-gray-700">Forecast: Dual-Stage Agro-Climatic Intelligence</p>
               <p className="text-[11px]">Computed by AGROVISION Decision Support Platform (SIH25044).</p>
             </div>
             <div className="flex items-center gap-3">

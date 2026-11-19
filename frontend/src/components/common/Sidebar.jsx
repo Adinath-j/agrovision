@@ -21,20 +21,22 @@ import {
 
 export default function Sidebar({ isOpen, onClose }) {
   const navItems = [
+    { header: 'Core Engine Workflows' },
     { name: 'Dashboard Overview', path: '/dashboard', icon: LayoutDashboard, exact: true },
-    { name: 'My Farms', path: '/dashboard/farms', icon: MapPin },
-    { name: 'Crop & Season Master', path: '/dashboard/crops', icon: Wheat },
-    { header: 'Prediction Engines' },
-    { name: 'Pre-Sowing Prediction', path: '/dashboard/pre-sowing', icon: TrendingUp },
+    { name: 'My Farms & Soil Health', path: '/dashboard/farms', icon: MapPin },
+    { name: 'Crop Yield Prediction', path: '/dashboard/predictions', icon: TrendingUp },
+    { name: 'Crop Optimization Engine', path: '/dashboard/optimization', icon: Sparkles },
+    { name: 'Weather & Risk Alerts', path: '/dashboard/weather', icon: CloudSun },
+
+    { header: 'Satellite & Market Intelligence' },
     { name: 'In-Season Yield Update', path: '/dashboard/in-season', icon: Activity },
     { name: 'Satellite Monitoring', path: '/dashboard/monitoring', icon: Satellite },
-    { header: 'Advisory & Intelligence' },
     { name: 'Crop Disease Scan', path: '/dashboard/disease', icon: ScanEye },
     { name: 'Mandi Market Prices', path: '/dashboard/market', icon: Store },
-    { name: 'Weather Alerts', path: '/dashboard/weather', icon: CloudSun },
     { name: 'AI Farming Assistant', path: '/dashboard/assistant', icon: BotMessageSquare },
-    { name: 'Optimization Engine', path: '/dashboard/optimization', icon: Sparkles },
-    { header: 'Account & Reports' },
+    { name: 'Crop & Season Master', path: '/dashboard/crops', icon: Wheat },
+
+    { header: 'Reports & Account' },
     { name: 'Analytical Reports', path: '/dashboard/reports', icon: FileSpreadsheet },
     { name: 'Farmer Profile', path: '/dashboard/profile', icon: UserCircle },
   ];

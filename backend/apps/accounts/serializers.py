@@ -6,6 +6,20 @@ from .models import FarmerProfile
 
 User = get_user_model()
 
+
+def _infer_land_category(area_ha: float) -> str:
+    ha = float(area_ha or 1.0)
+    if ha < 1.0:
+        return FarmerProfile.LandCategory.MARGINAL
+    if ha <= 2.0:
+        return FarmerProfile.LandCategory.SMALL
+    if ha <= 4.0:
+        return FarmerProfile.LandCategory.SEMI_MEDIUM
+    if ha <= 10.0:
+        return FarmerProfile.LandCategory.MEDIUM
+    return FarmerProfile.LandCategory.LARGE
+
+
 class FarmerProfileSerializer(serializers.ModelSerializer):
     land_holding_category_display = serializers.CharField(source='get_land_holding_category_display', read_only=True)
 
@@ -54,13 +68,13 @@ class UserSerializer(serializers.ModelSerializer):
             'date_joined',
             'last_login',
         ]
-        read_only_fields = ['id', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'role', 'date_joined', 'last_login']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True, required=True)
-    
+
     # Optional FarmerProfile initial fields during registration
     experience_years = serializers.IntegerField(required=False, default=2)
     total_land_area_hectares = serializers.DecimalField(max_digits=8, decimal_places=2, required=False, default=2.0)
@@ -86,6 +100,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             'primary_crops',
         ]
 
+    def validate_role(self, value):
+        # Prevent public self-registration as ADMIN
+        if value == User.Role.ADMIN:
+            return User.Role.FARMER
+        return value or User.Role.FARMER
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({"password_confirm": "Password fields do not match."})
@@ -96,19 +116,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         experience_years = validated_data.pop('experience_years', 2)
         total_land_area_hectares = validated_data.pop('total_land_area_hectares', 2.0)
         primary_crops = validated_data.pop('primary_crops', [])
-        
+
         password = validated_data.pop('password')
         user = User.objects.create_user(password=password, **validated_data)
-        
-        # Automatically create FarmerProfile if user is FARMER
+
         if user.role == User.Role.FARMER:
             FarmerProfile.objects.create(
                 user=user,
                 experience_years=experience_years,
                 total_land_area_hectares=total_land_area_hectares,
+                land_holding_category=_infer_land_category(total_land_area_hectares),
                 primary_crops=primary_crops
             )
-            
+
         return user
 
 

@@ -64,7 +64,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-lg font-bold text-[#174C32]">Explainable Agronomy</h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Utilizing SHAP feature importance to transparently explain which factors (nitrogen, rain, NDVI) drove the prediction.
+                Transparently explains which key agronomic factors (soil nutrients, rainfall, vegetative canopy) drive your harvest forecast.
               </p>
             </div>
           </div>
@@ -75,7 +75,7 @@ export default function AboutPage() {
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-emerald-100/90">
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Django REST Framework & PostgreSQL Architecture</span>
+                <span>Enterprise Cloud & Secure Database Architecture</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />

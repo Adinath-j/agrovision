@@ -68,7 +68,7 @@ export const authService = {
 export const farmService = {
   getFarms: () => api.get('/api/farms/records/'),
   getFarm: (id) => api.get(`/api/farms/records/${id}/`),
-  createFarm: (farmData) => api.post('/api/farms/records/', farmData),
+  createFarm: (farmData) => api.post('/api/v1/farms/', farmData),
   updateFarm: (id, farmData) => api.put(`/api/farms/records/${id}/`, farmData),
   deleteFarm: (id) => api.delete(`/api/farms/records/${id}/`),
   getSummary: () => api.get('/api/farms/summary/'),
@@ -94,9 +94,39 @@ export const predictionService = {
 };
 
 export const weatherService = {
-  getCurrent: (lat, lon) => api.get(`/api/weather/current/?lat=${lat}&lon=${lon}`),
-  getForecast: (lat, lon) => api.get(`/api/weather/forecast/?lat=${lat}&lon=${lon}`),
+  getCurrent: (lat, lon, farmId = '') => {
+    let url = '/api/weather/current/';
+    const params = [];
+    if (farmId) params.push(`farm_id=${farmId}`);
+    if (lat !== undefined && lat !== null && !isNaN(lat)) params.push(`lat=${lat}`);
+    if (lon !== undefined && lon !== null && !isNaN(lon)) params.push(`lon=${lon}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+    return api.get(url);
+  },
+  getForecast: (lat, lon, farmId = '') => {
+    let url = '/api/weather/forecast/';
+    const params = [];
+    if (farmId) params.push(`farm_id=${farmId}`);
+    if (lat !== undefined && lat !== null && !isNaN(lat)) params.push(`lat=${lat}`);
+    if (lon !== undefined && lon !== null && !isNaN(lon)) params.push(`lon=${lon}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+    return api.get(url);
+  },
   getAlerts: (farmId = '') => api.get(`/api/weather/alerts/${farmId ? `?farm_id=${farmId}` : ''}`),
+  syncLocationWeather: () => api.post('/api/weather/sync/'),
+};
+
+export const diseaseService = {
+  predict: (formData) => api.post('/api/disease/predict/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  predictBase64: (data) => api.post('/api/disease/predict/', data),
+  getHistory: () => api.get('/api/disease/history/'),
+  getDetail: (id) => api.get(`/api/disease/detail/${id}/`),
+  requestConsultation: (id) => api.post(`/api/disease/consult/${id}/`),
+  getPrescription: (id) => api.get(`/api/disease/prescription/${id}/`),
+  getCatalog: (crop = '') => api.get(`/api/disease/catalog/${crop ? `?crop=${crop}` : ''}`),
+  getSamples: () => api.get('/api/disease/samples/'),
 };
 
 export const marketService = {

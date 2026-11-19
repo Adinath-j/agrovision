@@ -12,8 +12,7 @@ django-cors-headers>=4.3.0
 drf-spectacular>=0.27.0
 
 # --- 2. Database Drivers (PostgreSQL & SQLite) ---
-psycopg>=3.1.18
-psycopg-binary>=3.1.18
+psycopg[binary]>=3.1.18
 
 # --- 3. Machine Learning, Statistical Modeling & Explainability ---
 numpy>=1.26.0
@@ -28,6 +27,7 @@ lightgbm>=4.3.0
 # --- 4. Computer Vision, Image Processing & OCR ---
 pillow>=10.2.0
 pytesseract>=0.3.10
+easyocr>=1.7.0
 
 # --- 5. External API Integrations & Networking ---
 requests>=2.31.0

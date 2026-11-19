@@ -18,21 +18,26 @@ import DashboardOverview from './pages/dashboard/DashboardOverview';
 import FarmsListPage from './pages/dashboard/FarmsListPage';
 import AddFarmPage from './pages/dashboard/AddFarmPage';
 import CropsCatalogPage from './pages/dashboard/CropsCatalogPage';
-import PreSowingPreviewPage from './pages/dashboard/PreSowingPreviewPage';
-import InSeasonPreviewPage from './pages/dashboard/InSeasonPreviewPage';
-import SatellitePreviewPage from './pages/dashboard/SatellitePreviewPage';
-import DiseasePreviewPage from './pages/dashboard/DiseasePreviewPage';
-import MarketPreviewPage from './pages/dashboard/MarketPreviewPage';
-import WeatherPreviewPage from './pages/dashboard/WeatherPreviewPage';
-import AssistantPreviewPage from './pages/dashboard/AssistantPreviewPage';
-import OptimizationPreviewPage from './pages/dashboard/OptimizationPreviewPage';
-import ReportsPreviewPage from './pages/dashboard/ReportsPreviewPage';
+import CropYieldPredictionPage from './pages/dashboard/CropYieldPredictionPage';
+import InSeasonYieldPage from './pages/dashboard/InSeasonYieldPage';
+import CropOptimizationPage from './pages/dashboard/CropOptimizationPage';
+import WeatherAdvisoryPage from './pages/dashboard/WeatherAdvisoryPage';
+import CropDiseasePage from './pages/dashboard/CropDiseasePage';
+import MarketPricesPage from './pages/dashboard/MarketPricesPage';
+import SatelliteMonitoringPage from './pages/dashboard/SatelliteMonitoringPage';
+import FarmingAssistantPage from './pages/dashboard/FarmingAssistantPage';
+import AnalyticalReportsPage from './pages/dashboard/AnalyticalReportsPage';
 import ProfilePage from './pages/dashboard/ProfilePage';
 
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
@@ -56,15 +61,15 @@ export default function App() {
             <Route path="farms" element={<FarmsListPage />} />
             <Route path="farms/new" element={<AddFarmPage />} />
             <Route path="crops" element={<CropsCatalogPage />} />
-            <Route path="pre-sowing" element={<PreSowingPreviewPage />} />
-            <Route path="in-season" element={<InSeasonPreviewPage />} />
-            <Route path="monitoring" element={<SatellitePreviewPage />} />
-            <Route path="disease" element={<DiseasePreviewPage />} />
-            <Route path="market" element={<MarketPreviewPage />} />
-            <Route path="weather" element={<WeatherPreviewPage />} />
-            <Route path="assistant" element={<AssistantPreviewPage />} />
-            <Route path="optimization" element={<OptimizationPreviewPage />} />
-            <Route path="reports" element={<ReportsPreviewPage />} />
+            <Route path="predictions" element={<CropYieldPredictionPage />} />
+            <Route path="in-season" element={<InSeasonYieldPage />} />
+            <Route path="monitoring" element={<SatelliteMonitoringPage />} />
+            <Route path="disease" element={<CropDiseasePage />} />
+            <Route path="market" element={<MarketPricesPage />} />
+            <Route path="weather" element={<WeatherAdvisoryPage />} />
+            <Route path="assistant" element={<FarmingAssistantPage />} />
+            <Route path="optimization" element={<CropOptimizationPage />} />
+            <Route path="reports" element={<AnalyticalReportsPage />} />
             <Route path="profile" element={<ProfilePage />} />
           </Route>
 

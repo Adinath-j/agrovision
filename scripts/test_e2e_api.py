@@ -71,19 +71,18 @@ def run_e2e_tests():
     assert farm is not None and crop is not None
     print(f"[PASS]    Parcel Scoping: Farm '{farm.farm_name}' ({farm.district}) | Crop '{crop.name}'")
 
-    # 4. Pre-Sowing Multi-Algorithm Yield Prediction (RF, XGBoost, Linear Regression)
-    for algo_name in ['Random Forest Regressor', 'XGBoost Regressor', 'Linear Regression (Baseline)']:
-        res = client.post('/api/predictions/pre-sowing/', {
-            "farm_id": farm.id,
-            "crop_id": crop.id,
-            "season_name": "Kharif",
-            "area_hectares": float(farm.area_hectares),
-            "algorithm": algo_name
-        }, format='json')
-        assert res.status_code == 200
-        meta = res.data['model_metadata']
-        assert meta['algorithm'] == algo_name
-        print(f"[PASS] 4. Pre-Sowing Prediction [{algo_name}]: Yield = {res.data['predicted_yield_kg_per_ha']} kg/ha | R²: {meta.get('r2_score')} | {res.data['crop_suitability']}")
+    # 4. Pre-Sowing Yield Prediction (Dedicated XGBoost Model)
+    res = client.post('/api/predictions/pre-sowing/', {
+        "farm_id": farm.id,
+        "crop_id": crop.id,
+        "season_name": "Kharif",
+        "area_hectares": float(farm.area_hectares),
+        "algorithm": "XGBoost Regressor"
+    }, format='json')
+    assert res.status_code == 200
+    meta = res.data['model_metadata']
+    assert meta['algorithm'] == 'XGBoost Regressor'
+    print(f"[PASS] 4. Pre-Sowing Prediction [XGBoost Regressor]: Yield = {res.data['predicted_yield_kg_per_ha']} kg/ha | R²: {meta.get('r2_score')} | {res.data['crop_suitability']}")
 
     # 5. Sentinel-2 Satellite Monitoring (With & Without Farm ID Fallback)
     res_sat_specific = client.get(f'/api/satellite/observations/?farm_id={farm.id}')

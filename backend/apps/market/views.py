@@ -2,8 +2,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from django.db.models import Max
+from django.utils import timezone
 from .models import MarketPrice, Market
 from apps.crops.models import Crop
+
 
 class MarketPriceListView(APIView):
     """
@@ -72,7 +74,14 @@ class MarketPriceCompareView(APIView):
         # Latest available date
         latest_date = qs.aggregate(m=Max('price_date'))['m']
         if not latest_date:
-            return Response({"error": "No market data found for this crop."}, status=status.HTTP_404_NOT_FOUND)
+            # Return 200 OK with empty comparison array so frontend handles empty state cleanly without 404 console errors
+            return Response({
+                "crop": crop_name,
+                "date": timezone.now().strftime('%Y-%m-%d'),
+                "best_market_opportunity": None,
+                "markets_compared_count": 0,
+                "comparison": []
+            }, status=status.HTTP_200_OK)
 
         prices = qs.filter(price_date=latest_date).select_related('market', 'crop').order_by('-modal_price_rs_per_quintal')
 
@@ -97,7 +106,7 @@ class MarketPriceCompareView(APIView):
             "best_market_opportunity": best_market,
             "markets_compared_count": len(comparison_data),
             "comparison": comparison_data
-        })
+        }, status=status.HTTP_200_OK)
 
 
 class MarketPriceTrendsView(APIView):

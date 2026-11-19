@@ -70,7 +70,7 @@ class YieldReportView(APIView):
                 "interval_min_kg": float(latest_pred.prediction_interval_min_kg) if latest_pred and latest_pred.prediction_interval_min_kg else round(predicted_yield * 0.9, 1),
                 "interval_max_kg": float(latest_pred.prediction_interval_max_kg) if latest_pred and latest_pred.prediction_interval_max_kg else round(predicted_yield * 1.1, 1),
                 "confidence_score": float(latest_pred.confidence_score) if latest_pred and latest_pred.confidence_score else 86.0,
-                "model_algorithm": latest_pred.model_algorithm if latest_pred else "Random Forest + Sentinel-2 Assimilation"
+                "model_algorithm": latest_pred.model_algorithm if latest_pred else "XGBoost + Sentinel-2 Assimilation"
             },
             "remote_sensing": {
                 "mission": "Sentinel-2 L2A BOA",

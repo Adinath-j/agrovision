@@ -36,6 +36,16 @@ STATE_SOIL_BENCHMARKS = {
     'DEFAULT': {'soil_type': 'LOAMY', 'ph': 6.9, 'n': 230.0, 'p': 21.0, 'k': 240.0, 'oc': 0.58, 'rain_kharif': 850.0, 'rain_rabi': 100.0}
 }
 
+
+def _resolve_numeric(custom_val, farm_val, bench_val):
+    """Safely resolves numeric overrides without falsy-zero bugs."""
+    if custom_val is not None and custom_val != '':
+        return float(custom_val)
+    if farm_val is not None and farm_val != '':
+        return float(farm_val)
+    return float(bench_val)
+
+
 def load_metadata():
     global _CACHED_METADATA
     if _CACHED_METADATA is None and os.path.exists(METADATA_PATH):
@@ -46,26 +56,24 @@ def load_metadata():
             print(f"Error loading ML metadata: {e}")
     return _CACHED_METADATA
 
+
 def get_model_for_algorithm(algo_name: str = None):
     """
-    Retrieves the serialized ML model pipeline corresponding to the requested algorithm:
-    - 'Random Forest Regressor' (Default best validated model)
-    - 'XGBoost Regressor'
-    - 'Linear Regression (Baseline)'
+    Retrieves the serialized ML model pipeline.
+    Defaults to XGBoost Regressor as the primary core engine, while supporting
+    explicit benchmark comparisons if requested.
     """
     global _CACHED_MODELS
     metadata = load_metadata()
-    normalized = (algo_name or '').lower().strip()
 
-    if 'linear' in normalized or 'baseline' in normalized:
-        resolved_name = 'Linear Regression (Baseline)'
-        filename = 'pre_sowing_linear_regression.joblib'
-    elif 'xgboost' in normalized or 'xgb' in normalized:
-        resolved_name = 'XGBoost Regressor'
-        filename = 'pre_sowing_xgboost.joblib'
-    else:
-        resolved_name = 'Random Forest Regressor'
-        filename = 'pre_sowing_random_forest.joblib'
+    algo_map = {
+        'XGBoost Regressor': 'pre_sowing_xgboost.joblib',
+        'Random Forest Regressor': 'pre_sowing_random_forest.joblib',
+        'Linear Regression': 'pre_sowing_linear_regression.joblib',
+    }
+
+    resolved_name = algo_name if algo_name in algo_map else 'XGBoost Regressor'
+    filename = algo_map[resolved_name]
 
     if resolved_name not in _CACHED_MODELS:
         model_file = os.path.join(ML_DIR, filename)
@@ -79,57 +87,58 @@ def get_model_for_algorithm(algo_name: str = None):
 
     return _CACHED_MODELS.get(resolved_name), metadata, resolved_name
 
+
 def load_model_artifacts():
-    model, metadata, _ = get_model_for_algorithm('Random Forest Regressor')
+    model, metadata, _ = get_model_for_algorithm('XGBoost Regressor')
     return model, metadata
 
 
 def predict_pre_sowing_yield(farm: Farm, crop: Crop, season_name: str, area_ha: float, farmer, custom_inputs=None):
     """
-    Executes pre-sowing machine learning yield inference.
+    Executes pre-sowing machine learning yield inference using XGBoost.
     Handles missing soil information gracefully using regional benchmarks.
     """
     custom_inputs = custom_inputs or {}
-    algorithm_requested = custom_inputs.get('algorithm')
-    model, metadata, resolved_algorithm = get_model_for_algorithm(algorithm_requested)
+    requested_algo = custom_inputs.get('algorithm') or 'XGBoost Regressor'
+    model, metadata, resolved_algorithm = get_model_for_algorithm(requested_algo)
 
     state = farm.state
     district = farm.district
     soil_bench = STATE_SOIL_BENCHMARKS.get(state, STATE_SOIL_BENCHMARKS['DEFAULT'])
 
-    # Determine Soil Parameters (Use farm data, or custom inputs, or regional fallback)
+    # Determine Soil Parameters (Use custom inputs -> farm data -> regional fallback)
     soil_type = custom_inputs.get('soil_type') or farm.soil_type
     if soil_type in ('UNKNOWN', '', None):
         soil_type = soil_bench['soil_type']
-        soil_type_estimated = True
-    else:
-        soil_type_estimated = False
 
-    soil_ph = custom_inputs.get('soil_ph') or (float(farm.soil_ph) if farm.soil_ph else soil_bench['ph'])
-    nitrogen_n = custom_inputs.get('nitrogen_n') or (float(farm.nitrogen_n) if farm.nitrogen_n else soil_bench['n'])
-    phosphorus_p = custom_inputs.get('phosphorus_p') or (float(farm.phosphorus_p) if farm.phosphorus_p else soil_bench['p'])
-    potassium_k = custom_inputs.get('potassium_k') or (float(farm.potassium_k) if farm.potassium_k else soil_bench['k'])
-    organic_carbon_pct = custom_inputs.get('organic_carbon_pct') or (float(farm.organic_carbon_pct) if farm.organic_carbon_pct else soil_bench['oc'])
+    soil_ph = _resolve_numeric(custom_inputs.get('soil_ph'), farm.soil_ph, soil_bench['ph'])
+    nitrogen_n = _resolve_numeric(custom_inputs.get('nitrogen_n'), farm.nitrogen_n, soil_bench['n'])
+    phosphorus_p = _resolve_numeric(custom_inputs.get('phosphorus_p'), farm.phosphorus_p, soil_bench['p'])
+    potassium_k = _resolve_numeric(custom_inputs.get('potassium_k'), farm.potassium_k, soil_bench['k'])
+    organic_carbon_pct = _resolve_numeric(custom_inputs.get('organic_carbon_pct'), farm.organic_carbon_pct, soil_bench['oc'])
 
-    # Determine seasonal rainfall baseline
+    # Determine seasonal rainfall baseline (check StateDistrict table first, then state benchmark)
+    district_ref = StateDistrict.objects.filter(state__iexact=state, district__iexact=district).first()
+    base_annual_rain = float(district_ref.avg_annual_rainfall_mm) if (district_ref and getattr(district_ref, 'avg_annual_rainfall_mm', None)) else None
+
     if 'rabi' in season_name.lower() or 'winter' in season_name.lower():
-        rainfall = soil_bench.get('rain_rabi', 110.0)
+        rainfall = round(base_annual_rain * 0.12, 1) if base_annual_rain else soil_bench.get('rain_rabi', 110.0)
         norm_season = 'Rabi'
     elif 'summer' in season_name.lower() or 'zaid' in season_name.lower():
         rainfall = 90.0
         norm_season = 'Summer'
     elif 'whole' in season_name.lower():
-        rainfall = soil_bench.get('rain_kharif', 850.0) + soil_bench.get('rain_rabi', 110.0)
+        rainfall = base_annual_rain if base_annual_rain else (soil_bench.get('rain_kharif', 850.0) + soil_bench.get('rain_rabi', 110.0))
         norm_season = 'Whole Year'
     else:
-        rainfall = soil_bench.get('rain_kharif', 890.0)
+        rainfall = round(base_annual_rain * 0.85, 1) if base_annual_rain else soil_bench.get('rain_kharif', 890.0)
         norm_season = 'Kharif'
 
     # Benchmark district yield
     national_crop_yield = float(crop.standard_national_yield_kg_per_ha)
     district_yield_mean = national_crop_yield
 
-    # Build input DataFrame
+    # Build input DataFrame matching exact training schema
     input_data = pd.DataFrame([{
         'Crop': crop.name,
         'State_Name': state,
@@ -153,17 +162,17 @@ def predict_pre_sowing_yield(farm: Farm, crop: Crop, season_name: str, area_ha: 
         algorithm_used = resolved_algorithm
         model_version = metadata.get('model_version', 'v1.0.0-presowing') if metadata else 'v1.0.0'
         algo_metrics = (metadata.get('models_comparison', {}).get(resolved_algorithm) if metadata else None) or {}
-        confidence = round(algo_metrics.get('r2_score', 0.91), 2)
+        confidence = round(algo_metrics.get('r2_score', 0.90), 2)
     else:
-        # Fallback to ICAR standard agronomic baseline if model not loaded
         pred_yield = round(national_crop_yield * (0.95 if norm_season == 'Kharif' else 1.05), 2)
         algorithm_used = 'Agronomic Benchmark Engine (Fallback)'
         model_version = 'v1.0.0-baseline'
         confidence = 0.85
         algo_metrics = {}
 
-    # Total Production in Tonnes
+    # Total Production in Tonnes & Yield in Tonnes/ha
     total_production_tonnes = round((pred_yield * float(area_ha)) / 1000.0, 2)
+    predicted_yield_tonnes_ha = round(pred_yield / 1000.0, 3)
 
     # Calibrated Prediction Interval (+/- 12% based on model test error)
     interval_min = round(pred_yield * 0.88, 2)
@@ -220,6 +229,40 @@ def predict_pre_sowing_yield(farm: Farm, crop: Crop, season_name: str, area_ha: 
     else:
         suitability = "Sub-optimal / Higher Irrigation Care Needed"
 
+    # Top SHAP Explainability Attributes
+    top_shap = metadata.get('top_shap_features', []) if metadata else []
+
+    # Directly Trigger & Link Agronomic Optimization Engine using resolved parameters
+    fertilizer_plan = None
+    irrigation_plan = None
+    try:
+        from apps.optimization.optimization_service import (
+            calculate_fertilizer_optimization,
+            calculate_irrigation_optimization,
+            generate_full_farm_optimization
+        )
+        # Sync in-memory farm attributes so custom_inputs/area_ha are reflected in STCR bag calculations
+        orig_vals = (farm.area_hectares, farm.soil_ph, farm.nitrogen_n, farm.phosphorus_p, farm.potassium_k)
+        farm.area_hectares = float(area_ha)
+        farm.soil_ph = soil_ph
+        farm.nitrogen_n = nitrogen_n
+        farm.phosphorus_p = phosphorus_p
+        farm.potassium_k = potassium_k
+
+        fertilizer_plan = calculate_fertilizer_optimization(farm, crop)
+        irrigation_plan = calculate_irrigation_optimization(farm, crop, growth_stage='FLOWERING')
+        generate_full_farm_optimization(farm, crop)
+
+        # Restore original ORM state
+        farm.area_hectares, farm.soil_ph, farm.nitrogen_n, farm.phosphorus_p, farm.potassium_k = orig_vals
+    except Exception as e:
+        print(f"Agronomic optimization trigger notice: {e}")
+
+    # Mark previous predictions for this farm+crop as not latest before inserting new one
+    YieldPrediction.objects.filter(
+        farm=farm, crop=crop, stage=YieldPrediction.Stage.PRE_SOWING, is_latest=True
+    ).update(is_latest=False)
+
     # Save to Database YieldPrediction Model
     prediction_record = YieldPrediction.objects.create(
         farm=farm,
@@ -235,6 +278,7 @@ def predict_pre_sowing_yield(farm: Farm, crop: Crop, season_name: str, area_ha: 
         confidence_score=confidence,
         model_version=model_version,
         model_algorithm=algorithm_used,
+        explainability_shap={"top_shap_features": top_shap},
         influencing_factors=influencing_factors,
         recommendations=recommendations,
         is_latest=True
@@ -247,6 +291,8 @@ def predict_pre_sowing_yield(farm: Farm, crop: Crop, season_name: str, area_ha: 
         "season": norm_season,
         "area_hectares": float(area_ha),
         "predicted_yield_kg_per_ha": pred_yield,
+        "predicted_yield_tonnes_per_ha": predicted_yield_tonnes_ha,
+        "predicted_yield_tonnes_ha": predicted_yield_tonnes_ha,
         "predicted_total_production_tonnes": total_production_tonnes,
         "prediction_interval": {
             "min_kg_per_ha": interval_min,
@@ -258,16 +304,22 @@ def predict_pre_sowing_yield(farm: Farm, crop: Crop, season_name: str, area_ha: 
             "difference_percentage": diff_pct,
             "verdict": f"{abs(diff_pct)}% {'above' if diff_pct >= 0 else 'below'} regional benchmark"
         },
+        "model_algorithm": algorithm_used,
         "model_metadata": {
             "algorithm": algorithm_used,
             "version": model_version,
             "confidence_score": confidence,
             "r2_score": algo_metrics.get('r2_score', confidence),
-            "mae_kg_ha": algo_metrics.get('mae_kg_ha', 1814.14),
-            "rmse_kg_ha": algo_metrics.get('rmse_kg_ha', 6289.14),
-            "mape_pct": algo_metrics.get('mape_pct', 31.2)
+            "mae_kg_ha": algo_metrics.get('mae_kg_ha', 1837.20),
+            "rmse_kg_ha": algo_metrics.get('rmse_kg_ha', 6596.51),
+            "mape_pct": algo_metrics.get('mape_pct', 31.83)
         },
+        "top_shap_features": top_shap,
         "influencing_factors": influencing_factors,
         "recommendations": recommendations,
+        "optimization": {
+            "fertilizer": fertilizer_plan,
+            "irrigation": irrigation_plan
+        },
         "created_at": prediction_record.created_at.strftime('%Y-%m-%d %H:%M:%S')
     }

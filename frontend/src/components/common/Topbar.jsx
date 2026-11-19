@@ -35,18 +35,6 @@ export default function Topbar({ onMenuToggle }) {
 
       {/* Right section: System health, Language, User Actions */}
       <div className="flex items-center gap-3">
-        {/* API Docs quick link */}
-        <a
-          href="http://127.0.0.1:8000/api/docs/"
-          target="_blank"
-          rel="noreferrer"
-          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-emerald-800 bg-gray-100 hover:bg-emerald-50 rounded-lg transition-colors"
-          title="Open Swagger REST API Docs"
-        >
-          <span>Swagger Docs</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
-
         {/* User Card & Logout */}
         <div className="flex items-center gap-3 pl-2 border-l border-gray-200">
           <div className="flex items-center gap-2.5">

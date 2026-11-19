@@ -72,7 +72,7 @@ export default function LandingPage() {
   const stats = [
     { label: "Supported Indian States", value: "6+", detail: "Maharashtra, MP, Punjab, Karnataka, Gujarat, UP" },
     { label: "Core Commercial & Staple Crops", value: "8+", detail: "Soybean, Wheat, Rice, Cotton, Maize, Sugarcane, Groundnut, Ragi" },
-    { label: "Prediction Accuracy Benchmark", value: "88-94%", detail: "Validated with R², MAE and RMSE metrics" },
+    { label: "Prediction Accuracy Benchmark", value: "88-94%", detail: "Calibrated on multi-year regional harvest data" },
     { label: "Dual-Stage Pipeline", value: "2 Stages", detail: "Pre-Sowing & In-Season Growth Stage Updates" },
   ];
 
@@ -124,11 +124,11 @@ export default function LandingPage() {
             <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-gray-500 font-medium">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>PostgreSQL & Django ORM</span>
+                <span>Cloud Synced & Secure</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>SHAP Explainable AI</span>
+                <span>Transparent Agronomic Insights</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -251,7 +251,7 @@ export default function LandingPage() {
                   to="/features"
                   className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700 hover:text-emerald-900"
                 >
-                  <span>Learn more about the ML Pipeline & SHAP explainability</span>
+                  <span>Learn more about Crop Intelligence & Decision Support</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -276,7 +276,7 @@ export default function LandingPage() {
                   <div className="bg-emerald-900/50 p-4 rounded-2xl border border-emerald-800">
                     <span className="text-xs text-emerald-300 block">Pre-Sowing Baseline</span>
                     <span className="text-2xl font-black text-white mt-1 block">1,850 kg/ha</span>
-                    <span className="text-[11px] text-emerald-200/80 mt-1 block">R²: 0.91 (XGBoost)</span>
+                    <span className="text-[11px] text-emerald-200/80 mt-1 block">Calibrated Harvest Forecast</span>
                   </div>
                   <div className="bg-emerald-900/50 p-4 rounded-2xl border border-emerald-800">
                     <span className="text-xs text-emerald-300 block">Current In-Season Est.</span>

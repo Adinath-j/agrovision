@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { farmService, notificationService, predictionService } from '../../services/api';
+import { getDistrictCoords } from '../../utils/districtCoords';
 import api from '../../services/api';
 
 export default function DashboardOverview() {
@@ -87,28 +88,54 @@ export default function DashboardOverview() {
     }
   };
 
-  const detectUserGPS = () => {
+  const loadUserLocationWeather = (currentFarms = farms) => {
+    const farmList = (currentFarms && currentFarms.length > 0) ? currentFarms : farms;
+
+    // Prioritize farm matching user profile location (village > district > state)
+    const primaryFarm = (farmList && farmList.length > 0)
+      ? (farmList.find(f =>
+          (user?.village && f.village?.toLowerCase() === user.village.toLowerCase()) ||
+          (user?.district && f.district?.toLowerCase() === user.district.toLowerCase()) ||
+          (user?.state && f.state?.toLowerCase() === user.state.toLowerCase())
+        ) || farmList[0])
+      : null;
+
+    const locVillage = user?.village || primaryFarm?.village || '';
+    const locDist = user?.district || primaryFarm?.district || '';
+    const locState = user?.state || primaryFarm?.state || '';
+
+    const coords = getDistrictCoords(locDist, locState, locVillage);
+    const farmLat = primaryFarm?.latitude ? parseFloat(primaryFarm.latitude) : coords.lat;
+    const farmLon = primaryFarm?.longitude ? parseFloat(primaryFarm.longitude) : coords.lng;
+
+    const locParts = [];
+    if (locVillage) locParts.push(locVillage);
+    if (locDist && locDist.toLowerCase() !== locVillage.toLowerCase()) locParts.push(locDist);
+    if (locState) locParts.push(locState);
+    const initialLocationName = locParts.length > 0
+      ? locParts.join(', ')
+      : (primaryFarm?.farm_name || 'My Farm Location');
+
+    loadWeatherForCoords(farmLat, farmLon, initialLocationName);
+  };
+
+  const handleDetectDeviceGPS = () => {
     if (navigator.geolocation) {
-      setWeatherLocation('Detecting GPS...');
+      setWeatherLoading(true);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = parseFloat(pos.coords.latitude.toFixed(4));
           const lon = parseFloat(pos.coords.longitude.toFixed(4));
-          const locName = user?.district ? `${user.district} (GPS)` : 'My GPS Location';
-          loadWeatherForCoords(lat, lon, locName);
+          loadWeatherForCoords(lat, lon, 'Device GPS');
         },
-        () => {
-          // Fallback to user registered district/state or primary farm
-          const fallbackName = user?.district || (farms[0]?.district) || 'Local Weather';
-          const lat = farms[0]?.latitude || 20.1983;
-          const lon = farms[0]?.longitude || 73.8821;
-          loadWeatherForCoords(lat, lon, fallbackName);
+        (err) => {
+          console.warn("Device GPS denied or timed out:", err);
+          loadUserLocationWeather(farms);
         },
-        { timeout: 7000 }
+        { timeout: 8000 }
       );
     } else {
-      const fallbackName = user?.district || (farms[0]?.district) || 'Local Weather';
-      loadWeatherForCoords(null, null, fallbackName);
+      loadUserLocationWeather(farms);
     }
   };
 
@@ -131,7 +158,7 @@ export default function DashboardOverview() {
         }
 
         // Initialize weather for user location
-        detectUserGPS();
+        loadUserLocationWeather(farmList);
       } catch (err) {
         console.error("Error loading dashboard data:", err);
       } finally {
@@ -301,26 +328,36 @@ export default function DashboardOverview() {
             </span>
             <span className="text-xs font-semibold text-gray-500">Plots</span>
           </div>
-          <div className="text-[11px] text-gray-500">
-            {farms.length > 0 ? `${farms[0].district}, ${farms[0].state}` : 'Ready for farm addition'}
+          <div className="text-[11px] text-gray-500 truncate" title={farms.length > 0 ? `${[...new Set(farms.map((f) => f.district))].join(', ')}, ${farms[0].state}` : 'Ready for farm addition'}>
+            {farms.length > 0 ? `${[...new Set(farms.map((f) => f.district))].join(', ')}, ${farms[0].state}` : 'Ready for farm addition'}
           </div>
         </div>
 
         {/* Local Weather of User Location (Request 1) */}
         <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
-            <div className="flex items-center gap-1.5 truncate max-w-[170px]" title={weatherLocation}>
+            <div className="flex items-center gap-1.5 truncate max-w-[155px]" title={weatherLocation}>
               <Locate className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span className="truncate font-semibold text-gray-700">{weatherLocation}</span>
             </div>
-            <button
-              type="button"
-              onClick={detectUserGPS}
-              className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition-colors cursor-pointer"
-              title="Detect Current GPS Location"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${weatherLoading ? 'animate-spin text-emerald-700' : ''}`} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleDetectDeviceGPS}
+                className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition-colors cursor-pointer"
+                title="Detect Device Live GPS"
+              >
+                <Locate className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => loadUserLocationWeather(farms)}
+                className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition-colors cursor-pointer"
+                title="Refresh Farm Telemetry"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${weatherLoading ? 'animate-spin text-emerald-700' : ''}`} />
+              </button>
+            </div>
           </div>
 
           <div className="flex items-baseline gap-2">
@@ -354,11 +391,19 @@ export default function DashboardOverview() {
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-emerald-700">Optimal</span>
-            <span className="text-xs font-semibold text-gray-500">pH 6.85</span>
+            <span className="text-3xl font-extrabold text-emerald-700">
+              {farms[0]?.soil_ph
+                ? (Number(farms[0].soil_ph) < 6.5 ? 'Acidic' : Number(farms[0].soil_ph) <= 7.8 ? 'Optimal' : 'Alkaline')
+                : (farms.length > 0 ? 'Optimal' : 'Active')}
+            </span>
+            <span className="text-xs font-semibold text-gray-500">
+              {farms[0]?.soil_ph ? `pH ${farms[0].soil_ph}` : 'pH Calibrated'}
+            </span>
           </div>
-          <div className="text-[11px] text-gray-500">
-            Organic Carbon: 0.65% • NPK Balanced
+          <div className="text-[11px] text-gray-500 truncate" title={farms[0] ? `Organic Carbon: ${farms[0].organic_carbon_pct ? `${farms[0].organic_carbon_pct}%` : 'Calibrated'} • ${farms[0].nitrogen_n && farms[0].phosphorus_p && farms[0].potassium_k ? `N:${farms[0].nitrogen_n} P:${farms[0].phosphorus_p} K:${farms[0].potassium_k}` : 'NPK Balanced'}` : 'Organic Carbon: Calibrated • NPK Balanced'}>
+            {farms[0]
+              ? `Organic Carbon: ${farms[0].organic_carbon_pct ? `${farms[0].organic_carbon_pct}%` : 'Calibrated'} • ${farms[0].nitrogen_n && farms[0].phosphorus_p && farms[0].potassium_k ? `N:${farms[0].nitrogen_n} P:${farms[0].phosphorus_p} K:${farms[0].potassium_k}` : 'NPK Balanced'}`
+              : 'Organic Carbon: Calibrated • NPK Balanced'}
           </div>
         </div>
 
@@ -379,7 +424,7 @@ export default function DashboardOverview() {
               </h2>
             </div>
             <Link
-              to="/dashboard/pre-sowing"
+              to="/dashboard/predictions"
               className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
             >
               <span>View details</span>
@@ -390,29 +435,29 @@ export default function DashboardOverview() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200/60 space-y-1">
               <span className="text-xs text-gray-500">Crop & Parcel</span>
-              <p className="text-sm font-bold text-gray-900">
+              <p className="text-sm font-bold text-gray-900 truncate">
                 {latestPrediction ? latestPrediction.crop_name : 'Soybean'}
               </p>
-              <p className="text-[11px] text-gray-500">
-                {latestPrediction ? latestPrediction.farm_name : (farms[0]?.farm_name || 'Plot 1')}
+              <p className="text-[11px] text-gray-500 truncate">
+                {latestPrediction ? latestPrediction.farm_name : (farms[0]?.farm_name || 'Select Farm Parcel')}
               </p>
             </div>
             <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/70 space-y-1">
               <span className="text-xs text-emerald-800 font-medium">Predicted Yield</span>
               <p className="text-2xl font-extrabold text-[#174C32]">
-                {latestPrediction ? `${Number(latestPrediction.predicted_yield_kg_per_ha).toLocaleString()} kg/ha` : '1,850 kg/ha'}
+                {latestPrediction ? `${Number(latestPrediction.predicted_yield_kg_per_ha).toLocaleString()} kg/ha` : 'Ready to Run'}
               </p>
               <p className="text-[11px] text-emerald-700 font-semibold">
-                {latestPrediction ? `Model: ${latestPrediction.model_algorithm}` : 'Random Forest ML Engine'}
+                {latestPrediction ? 'Calibrated AI Forecast' : 'XGBoost ML Pipeline'}
               </p>
             </div>
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/70 space-y-1">
               <span className="text-xs text-amber-800 font-medium">Est. Production</span>
               <p className="text-2xl font-extrabold text-amber-900">
-                {latestPrediction ? `${latestPrediction.predicted_total_production_tonnes} T` : '3.45 Tonnes'}
+                {latestPrediction ? `${latestPrediction.predicted_total_production_tonnes} T` : (farms[0] ? `${(parseFloat(farms[0].area_hectares || 1) * 1.85).toFixed(2)} T Est.` : '—')}
               </p>
               <p className="text-[11px] text-amber-700">
-                {latestPrediction ? `Confidence: ${latestPrediction.confidence_score ? latestPrediction.confidence_score * 100 : 91}%` : 'Calibrated ±12%'}
+                {latestPrediction ? `Confidence: ${latestPrediction.confidence_score ? latestPrediction.confidence_score * 100 : 90}%` : 'Calibrated ±12%'}
               </p>
             </div>
           </div>
@@ -432,46 +477,69 @@ export default function DashboardOverview() {
           <div className="bg-[#F6F8F5] p-4 rounded-2xl border border-gray-200/60 text-xs text-gray-600 space-y-1.5">
             <div className="font-bold text-gray-800 flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-emerald-600" />
-              <span>SHAP Positive Yield Drivers:</span>
+              <span>Key Agronomic Factors:</span>
             </div>
             <p>
-              Adequate nitrogen reserve (240 kg/ha) and timely pre-monsoon precipitation provided an optimal germination cushion.
+              {latestPrediction?.influencing_factors?.[0]?.description
+                ? latestPrediction.influencing_factors[0].description
+                : farms[0]
+                ? `Soil metrics active for ${farms[0].farm_name} (${farms[0].district}, ${farms[0].state})${farms[0].soil_ph ? ` at pH ${farms[0].soil_ph}` : ''}. Pre-sowing XGBoost model is calibrated to calculate seasonal yield.`
+                : 'Register your land parcel and soil test parameters to activate precision AI yield forecasting.'}
             </p>
           </div>
         </div>
 
-        {/* Quick Action Shortcuts */}
+        {/* Quick Action Shortcuts: Spotlight Core Engine */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-gray-200/80 shadow-2xs space-y-4">
-          <h2 className="text-base font-bold text-gray-900">Quick Agro-Actions</h2>
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h2 className="text-base font-bold text-gray-900">Core Engine Shortcuts</h2>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">Spotlight</span>
+          </div>
           <div className="grid grid-cols-1 gap-2.5">
-            
+
             <Link
-              to="/dashboard/disease"
+              to="/dashboard/predictions"
+              className="p-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/30 hover:bg-emerald-50 hover:border-emerald-300 flex items-center justify-between transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-2xs">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-[#174C32] block">Crop Yield Prediction</span>
+                  <span className="text-[10px] text-emerald-700">Predict harvest yield & key growth factors</span>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+
+            <Link
+              to="/dashboard/optimization"
+              className="p-3 rounded-2xl border border-amber-200/80 bg-amber-50/30 hover:bg-amber-50 hover:border-amber-300 flex items-center justify-between transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-2xs">
+                  <FlaskConical className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-amber-950 block">Crop Optimization Engine</span>
+                  <span className="text-[10px] text-amber-700">STCR 50kg fertilizer bags & ETc irrigation</span>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+
+            <Link
+              to="/dashboard/farms"
               className="p-3 rounded-2xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/40 flex items-center justify-between transition-colors group"
             >
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center">
-                  <ScanEye className="w-5 h-5" />
+                  <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-gray-800 block">Scan Crop Leaf</span>
-                  <span className="text-[10px] text-gray-500">Detect disease with CNN</span>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-700 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-
-            <Link
-              to="/dashboard/market"
-              className="p-3 rounded-2xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/40 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-gray-800 block">Mandi Prices</span>
-                  <span className="text-[10px] text-gray-500">Compare nearby APMC rates</span>
+                  <span className="text-xs font-bold text-gray-800 block">My Farms & Soil Health</span>
+                  <span className="text-[10px] text-gray-500">Interactive Leaflet GPS & soil cards</span>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-700 transition-transform group-hover:translate-x-0.5" />
@@ -486,24 +554,8 @@ export default function DashboardOverview() {
                   <CloudSun className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-gray-800 block">Weather Advisories</span>
-                  <span className="text-[10px] text-gray-500">7-Day rainfall forecast</span>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-700 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-
-            <Link
-              to="/dashboard/monitoring"
-              className="p-3 rounded-2xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/40 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center">
-                  <Activity className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-gray-800 block">Sentinel-2 NDVI</span>
-                  <span className="text-[10px] text-gray-500">Vegetation health index</span>
+                  <span className="text-xs font-bold text-gray-800 block">Weather & Risk Alerts</span>
+                  <span className="text-[10px] text-gray-500">Live telemetry & IMD hazard engine</span>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-700 transition-transform group-hover:translate-x-0.5" />

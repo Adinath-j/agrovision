@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Store,
-  TrendingUp,
   MapPin,
-  ArrowRight,
-  Search,
   Filter,
   DollarSign,
-  AlertCircle,
-  HelpCircle,
-  Sparkles,
-  Calendar,
-  Layers
+  AlertCircle
 } from 'lucide-react';
 import {
   BarChart,
@@ -22,15 +14,26 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import api from '../../services/api';
-import { cropService } from '../../services/api';
+import api, { cropService } from '../../services/api';
 
-export default function MarketPreviewPage() {
+const SUPPORTED_MARKET_CROPS = [
+  'Soybean',
+  'Wheat',
+  'Rice',
+  'Maize',
+  'Cotton',
+  'Sugarcane',
+  'Groundnut',
+  'Ragi'
+];
+
+export default function MarketPricesPage() {
   const [crops, setCrops] = useState([]);
   const [selectedCrop, setSelectedCrop] = useState('Soybean');
   const [selectedState, setSelectedState] = useState('');
   const [comparisonData, setComparisonData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notFoundCrop, setNotFoundCrop] = useState(null);
 
   // Gross Revenue Estimator State
   const [productionTonnes, setProductionTonnes] = useState(3.5);
@@ -50,15 +53,24 @@ export default function MarketPreviewPage() {
   useEffect(() => {
     cropService.getCrops().then((res) => {
       const list = res.data.results || res.data || [];
-      setCrops(list);
+      // Prioritize crops with active mandi data at the front of the pill bar
+      const sortedList = [...list].sort((a, b) => {
+        const aSupported = SUPPORTED_MARKET_CROPS.includes(a.name) ? -1 : 1;
+        const bSupported = SUPPORTED_MARKET_CROPS.includes(b.name) ? -1 : 1;
+        return aSupported - bSupported;
+      });
+      setCrops(sortedList);
     });
   }, []);
 
   const fetchMarketComparison = async (crop, state) => {
     setLoading(true);
+    setNotFoundCrop(null);
     try {
-      const url = `/api/market/compare/?crop=${crop}${state ? `&state=${state}` : ''}`;
-      const res = await api.get(url);
+      const params = new URLSearchParams({ crop });
+      if (state) params.append('state', state);
+
+      const res = await api.get(`/api/market/compare/?${params.toString()}`);
       setComparisonData(res.data);
 
       if (res.data?.best_market_opportunity) {
@@ -66,7 +78,12 @@ export default function MarketPreviewPage() {
         setSelectedMandiName(res.data.best_market_opportunity.mandi);
       }
     } catch (err) {
-      console.error("Market data fetch failed:", err);
+      if (err.response?.status === 404) {
+        setComparisonData(null);
+        setNotFoundCrop(crop);
+      } else {
+        console.error('Market data fetch failed:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -89,14 +106,14 @@ export default function MarketPreviewPage() {
     });
   }, [productionTonnes, selectedMandiPrice]);
 
-  const chartData = comparisonData?.comparison?.map((c) => ({
-    mandi: c.mandi.replace(' APMC', '').slice(0, 15),
-    price: c.modal_price
-  })) || [];
+  const chartData =
+    comparisonData?.comparison?.map((c) => ({
+      mandi: c.mandi.replace(' APMC', '').slice(0, 15),
+      price: c.modal_price
+    })) || [];
 
   return (
     <div className="space-y-8">
-      
       {/* Page Header */}
       <div>
         <div className="flex items-center gap-2">
@@ -117,7 +134,6 @@ export default function MarketPreviewPage() {
 
       {/* Filter Ribbon */}
       <div className="bg-white rounded-3xl p-5 border border-gray-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        
         {/* Crop Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-xl">
           {crops.map((c) => (
@@ -145,16 +161,42 @@ export default function MarketPreviewPage() {
           >
             <option value="">All Supported States</option>
             {states.map((st) => (
-              <option key={st} value={st}>{st}</option>
+              <option key={st} value={st}>
+                {st}
+              </option>
             ))}
           </select>
         </div>
-
       </div>
 
       {loading ? (
         <div className="py-16 text-center text-gray-500 text-xs">
           Loading AGMARKNET mandi feeds for {selectedCrop}...
+        </div>
+      ) : notFoundCrop || !comparisonData?.comparison?.length ? (
+        <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-8 text-center space-y-3">
+          <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
+          <h3 className="text-base font-bold text-gray-900">
+            No Active Mandi Arrivals Found for {selectedCrop}
+            {selectedState ? ` in ${selectedState}` : ''}
+          </h3>
+          <p className="text-xs text-gray-600 max-w-md mx-auto">
+            The current AGMARKNET feed does not have recent auction records for this selection. Select a primary traded commodity below or clear the state filter:
+          </p>
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            {SUPPORTED_MARKET_CROPS.map((cropName) => (
+              <button
+                key={cropName}
+                onClick={() => {
+                  setSelectedState('');
+                  setSelectedCrop(cropName);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-[#174C32] text-white text-xs font-semibold hover:bg-emerald-900 transition-colors"
+              >
+                View {cropName}
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <>
@@ -170,19 +212,27 @@ export default function MarketPreviewPage() {
                 </h3>
                 <p className="text-xs text-emerald-100/90 flex items-center gap-2">
                   <MapPin className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>{comparisonData.best_market_opportunity.district}, {comparisonData.best_market_opportunity.state}</span>
+                  <span>
+                    {comparisonData.best_market_opportunity.district},{' '}
+                    {comparisonData.best_market_opportunity.state}
+                  </span>
                   <span>•</span>
-                  <span>Arrivals: {comparisonData.best_market_opportunity.arrivals_tonnes} Tonnes</span>
+                  <span>
+                    Arrivals: {comparisonData.best_market_opportunity.arrivals_tonnes} Tonnes
+                  </span>
                 </p>
               </div>
 
               <div className="text-right bg-white/10 p-4 rounded-2xl border border-white/10">
-                <span className="text-[11px] text-emerald-200 block uppercase font-medium">Highest Modal Rate</span>
+                <span className="text-[11px] text-emerald-200 block uppercase font-medium">
+                  Highest Modal Rate
+                </span>
                 <span className="text-3xl font-black text-white">
                   ₹{comparisonData.best_market_opportunity.modal_price.toLocaleString()}/Q
                 </span>
                 <span className="text-[10px] text-emerald-300 block mt-0.5">
-                  Min: ₹{comparisonData.best_market_opportunity.min_price} • Max: ₹{comparisonData.best_market_opportunity.max_price}
+                  Min: ₹{comparisonData.best_market_opportunity.min_price} | Max: ₹
+                  {comparisonData.best_market_opportunity.max_price}
                 </span>
               </div>
             </div>
@@ -190,7 +240,6 @@ export default function MarketPreviewPage() {
 
           {/* Grid: Mandi Comparison Table & Price Bar Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
             {/* Comparison Table (7 cols) */}
             <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-gray-200/80 shadow-2xs space-y-4">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
@@ -217,9 +266,13 @@ export default function MarketPreviewPage() {
                     {comparisonData?.comparison?.map((m, idx) => (
                       <tr key={idx} className="hover:bg-gray-50/60 transition-colors">
                         <td className="p-3 font-bold text-gray-900">{m.mandi}</td>
-                        <td className="p-3 text-gray-600">{m.district}, {m.state}</td>
+                        <td className="p-3 text-gray-600">
+                          {m.district}, {m.state}
+                        </td>
                         <td className="p-3 font-extrabold text-[#174C32]">₹{m.modal_price}/Q</td>
-                        <td className="p-3 text-gray-500 text-[11px]">₹{m.min_price} - ₹{m.max_price}</td>
+                        <td className="p-3 text-gray-500 text-[11px]">
+                          ₹{m.min_price} - ₹{m.max_price}
+                        </td>
                         <td className="p-3">
                           <button
                             onClick={() => {
@@ -249,10 +302,26 @@ export default function MarketPreviewPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                    <XAxis dataKey="mandi" angle={-25} textAnchor="end" tick={{ fontSize: 9 }} interval={0} stroke="#9CA3AF" />
-                    <YAxis tick={{ fontSize: 10 }} stroke="#9CA3AF" domain={['dataMin - 500', 'dataMax + 200']} />
+                    <XAxis
+                      dataKey="mandi"
+                      angle={-25}
+                      textAnchor="end"
+                      tick={{ fontSize: 9 }}
+                      interval={0}
+                      stroke="#9CA3AF"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10 }}
+                      stroke="#9CA3AF"
+                      domain={['dataMin - 500', 'dataMax + 200']}
+                    />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#1F2937', color: '#fff', borderRadius: '12px', fontSize: '11px' }}
+                      contentStyle={{
+                        backgroundColor: '#1F2937',
+                        color: '#fff',
+                        borderRadius: '12px',
+                        fontSize: '11px'
+                      }}
                       formatter={(val) => [`₹${val}/Q`, 'Modal Rate']}
                     />
                     <Bar dataKey="price" fill="#2E8B57" radius={[6, 6, 0, 0]} />
@@ -260,7 +329,6 @@ export default function MarketPreviewPage() {
                 </ResponsiveContainer>
               </div>
             </div>
-
           </div>
 
           {/* Gross Revenue Estimator Module */}
@@ -270,7 +338,9 @@ export default function MarketPreviewPage() {
                 <DollarSign className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Estimated Gross Harvest Revenue Calculator</h3>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Estimated Gross Harvest Revenue Calculator
+                </h3>
                 <p className="text-xs text-gray-500">
                   Estimated Gross Revenue = Predicted Production (Tonnes) × 10 × Selected APMC Modal Price (₹/Q)
                 </p>
@@ -327,10 +397,8 @@ export default function MarketPreviewPage() {
               <strong className="text-gray-700">Important Disclaimer:</strong> Estimated gross revenue is an indicative calculation based on selected APMC modal price; actual market realisations vary with crop grade, moisture content, clean weight deductions, and dynamic auction bids.
             </div>
           </div>
-
         </>
       )}
-
     </div>
   );
 }

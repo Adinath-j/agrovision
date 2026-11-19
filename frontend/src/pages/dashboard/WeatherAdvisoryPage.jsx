@@ -21,9 +21,11 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { farmService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-export default function WeatherPreviewPage() {
+export default function WeatherAdvisoryPage() {
+  const { user } = useAuth();
   const [farms, setFarms] = useState([]);
   const [selectedFarmId, setSelectedFarmId] = useState('');
   const [weatherData, setWeatherData] = useState(null);
@@ -49,13 +51,20 @@ export default function WeatherPreviewPage() {
       const list = res.data.results || res.data || [];
       setFarms(list);
       if (list.length > 0) {
-        setSelectedFarmId(list[0].id);
-        fetchWeather(list[0].id);
+        // Prioritize farm matching user profile location (village > district > state)
+        const matched = list.find((f) =>
+          (user?.village && f.village?.toLowerCase() === user.village.toLowerCase()) ||
+          (user?.district && f.district?.toLowerCase() === user.district.toLowerCase()) ||
+          (user?.state && f.state?.toLowerCase() === user.state.toLowerCase())
+        );
+        const targetFarm = matched || list[0];
+        setSelectedFarmId(targetFarm.id);
+        fetchWeather(targetFarm.id);
       } else {
         fetchWeather(null);
       }
     });
-  }, []);
+  }, [user]);
 
   const handleFarmChange = (e) => {
     const id = e.target.value;
@@ -295,3 +304,4 @@ export default function WeatherPreviewPage() {
     </div>
   );
 }
+  

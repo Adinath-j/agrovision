@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   MapPin,
@@ -17,21 +17,28 @@ import {
   Info
 } from 'lucide-react';
 import { farmService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { getDistrictCoords } from '../../utils/districtCoords';
 import FarmMap from '../../components/common/FarmMap';
 
 export default function AddFarmPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const defaultDist = user?.district || 'Nashik';
+  const defaultState = user?.state || 'Maharashtra';
+  const initialCoords = getDistrictCoords(defaultDist, defaultState);
 
   const [formData, setFormData] = useState({
     farm_name: '',
-    state: 'Maharashtra',
-    district: 'Nashik',
+    state: defaultState,
+    district: defaultDist,
     sub_district: '',
     village: '',
     survey_khasra_number: '',
-    area_hectares: 2.0,
-    latitude: 20.1983,
-    longitude: 73.8821,
+    area_hectares: '',
+    latitude: initialCoords.lat,
+    longitude: initialCoords.lng,
     soil_type: 'BLACK',
     soil_ph: '',
     nitrogen_n: '',
@@ -46,7 +53,12 @@ export default function AddFarmPage() {
 
   // Feature: Land unit selection (Hectares | Acres | Guntha)
   const [areaUnit, setAreaUnit] = useState('acres'); // 'acres' | 'hectares' | 'guntha'
-  const [areaValue, setAreaValue] = useState('4.94'); // 2.0 Ha in acres
+  const [areaValue, setAreaValue] = useState(''); // Starts empty to force genuine farmer input
+  const [areaCalculatedFromMap, setAreaCalculatedFromMap] = useState(false);
+  const areaUnitRef = useRef(areaUnit);
+  useEffect(() => {
+    areaUnitRef.current = areaUnit;
+  }, [areaUnit]);
 
   const [boundaryGeojson, setBoundaryGeojson] = useState(null);
   const [ocrScanning, setOcrScanning] = useState(false);
@@ -55,6 +67,51 @@ export default function AddFarmPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Sync initial user district only once on initial mount without overwriting user input
+  const hasInitializedDistRef = useRef(false);
+  useEffect(() => {
+    if (!hasInitializedDistRef.current && user) {
+      hasInitializedDistRef.current = true;
+      if (user.district && !formData.farm_name) {
+        const c = getDistrictCoords(user.district, user.state || 'Maharashtra');
+        setFormData((prev) => ({
+          ...prev,
+          district: prev.district || user.district,
+          state: prev.state || user.state || 'Maharashtra',
+          latitude: prev.latitude || c.lat,
+          longitude: prev.longitude || c.lng
+        }));
+      }
+    }
+  }, [user]);
+
+  const handleDistrictChange = (val) => {
+    setFormData((prev) => {
+      const updated = { ...prev, district: val };
+      if (val && val.trim().length >= 3) {
+        const c = getDistrictCoords(val, prev.state);
+        // Only update centroid if boundary hasn't been drawn yet
+        if (c && !boundaryGeojson) {
+          updated.latitude = c.lat;
+          updated.longitude = c.lng;
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleStateChange = (val) => {
+    setFormData((prev) => {
+      const updated = { ...prev, state: val };
+      const c = getDistrictCoords(prev.district, val);
+      if (c && !boundaryGeojson) {
+        updated.latitude = c.lat;
+        updated.longitude = c.lng;
+      }
+      return updated;
+    });
+  };
 
   const states = [
     'Maharashtra',
@@ -101,24 +158,26 @@ export default function AddFarmPage() {
         (pos) => {
           setFormData((prev) => ({
             ...prev,
-            latitude: parseFloat(pos.coords.latitude.toFixed(4)),
-            longitude: parseFloat(pos.coords.longitude.toFixed(4)),
+            latitude: parseFloat(pos.coords.latitude.toFixed(6)),
+            longitude: parseFloat(pos.coords.longitude.toFixed(6)),
           }));
         },
         () => {
-          // Fallback to Nashik coordinates
+          // Fallback to district centroid
+          const c = getDistrictCoords(formData.district, formData.state);
           setFormData((prev) => ({
             ...prev,
-            latitude: 20.1983,
-            longitude: 73.8821,
+            latitude: c.lat,
+            longitude: c.lng,
           }));
         }
       );
     } else {
+      const c = getDistrictCoords(formData.district, formData.state);
       setFormData((prev) => ({
         ...prev,
-        latitude: 20.1983,
-        longitude: 73.8821,
+        latitude: c.lat,
+        longitude: c.lng,
       }));
     }
   };
@@ -140,20 +199,41 @@ export default function AddFarmPage() {
 
       if (data && data.extracted_data) {
         const ext = data.extracted_data;
-        setFormData((prev) => ({
-          ...prev,
-          soil_ph: ext.soil_ph !== null && ext.soil_ph !== undefined ? ext.soil_ph : prev.soil_ph,
-          nitrogen_n: ext.nitrogen_n !== null && ext.nitrogen_n !== undefined ? ext.nitrogen_n : prev.nitrogen_n,
-          phosphorus_p: ext.phosphorus_p !== null && ext.phosphorus_p !== undefined ? ext.phosphorus_p : prev.phosphorus_p,
-          potassium_k: ext.potassium_k !== null && ext.potassium_k !== undefined ? ext.potassium_k : prev.potassium_k,
-          organic_carbon_pct: ext.organic_carbon_pct !== null && ext.organic_carbon_pct !== undefined ? ext.organic_carbon_pct : prev.organic_carbon_pct,
-          soil_type: ext.soil_type || prev.soil_type,
-          survey_khasra_number: ext.survey_khasra_number || prev.survey_khasra_number,
-        }));
+        const populatedItems = [];
+        setFormData((prev) => {
+          const updated = { ...prev };
+          if (ext.soil_ph !== null && ext.soil_ph !== undefined) {
+            updated.soil_ph = ext.soil_ph;
+            populatedItems.push(`pH ${ext.soil_ph}`);
+          }
+          if (ext.nitrogen_n !== null && ext.nitrogen_n !== undefined) {
+            updated.nitrogen_n = ext.nitrogen_n;
+            populatedItems.push(`N: ${ext.nitrogen_n}`);
+          }
+          if (ext.phosphorus_p !== null && ext.phosphorus_p !== undefined) {
+            updated.phosphorus_p = ext.phosphorus_p;
+            populatedItems.push(`P: ${ext.phosphorus_p}`);
+          }
+          if (ext.potassium_k !== null && ext.potassium_k !== undefined) {
+            updated.potassium_k = ext.potassium_k;
+            populatedItems.push(`K: ${ext.potassium_k}`);
+          }
+          if (ext.organic_carbon_pct !== null && ext.organic_carbon_pct !== undefined) {
+            updated.organic_carbon_pct = ext.organic_carbon_pct;
+            populatedItems.push(`OC: ${ext.organic_carbon_pct}%`);
+          }
+          if (ext.soil_type) updated.soil_type = ext.soil_type;
+          if (ext.survey_khasra_number) updated.survey_khasra_number = ext.survey_khasra_number;
+          return updated;
+        });
 
-        setOcrSuccessMsg(
-          `✓ Soil Health Card processed (${data.engine || 'OCR'}): Auto-populated pH ${ext.soil_ph ?? 'N/A'}, N: ${ext.nitrogen_n ?? 'N/A'}, P: ${ext.phosphorus_p ?? 'N/A'}, K: ${ext.potassium_k ?? 'N/A'} kg/ha`
-        );
+        if (populatedItems.length > 0) {
+          setOcrSuccessMsg(
+            `✓ Soil Health Card processed: Auto-populated ${populatedItems.join(', ')} kg/ha`
+          );
+        } else {
+          setOcrErrorMsg('Could not detect clear text on the card. Please verify manual values.');
+        }
       } else {
         setOcrErrorMsg('Could not detect clear text on the card. Please verify manual values.');
       }
@@ -172,28 +252,67 @@ export default function AddFarmPage() {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    // Ensure areaValue is valid
+    const rawArea = parseFloat(areaValue);
+    if (isNaN(rawArea) || rawArea <= 0) {
+      setError(`Please enter a valid parcel area in ${areaUnit} (e.g. 3.5).`);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      // Clean payload: numeric nulls if empty string
+      let finalHa = rawArea;
+      if (areaUnit === 'acres') finalHa = rawArea / 2.47105;
+      else if (areaUnit === 'guntha') finalHa = rawArea / 100.0;
+      if (areaCalculatedFromMap && formData.area_hectares) {
+        finalHa = parseFloat(formData.area_hectares);
+      }
+      finalHa = Math.max(0.01, parseFloat(Number(finalHa).toFixed(2)));
+
       const payload = {
-        ...formData,
-        area_hectares: parseFloat(formData.area_hectares),
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-        soil_ph: formData.soil_ph ? parseFloat(formData.soil_ph) : null,
-        nitrogen_n: formData.nitrogen_n ? parseFloat(formData.nitrogen_n) : null,
-        phosphorus_p: formData.phosphorus_p ? parseFloat(formData.phosphorus_p) : null,
-        potassium_k: formData.potassium_k ? parseFloat(formData.potassium_k) : null,
-        organic_carbon_pct: formData.organic_carbon_pct ? parseFloat(formData.organic_carbon_pct) : null,
+        farm_name: formData.farm_name.trim(),
+        state: formData.state.trim(),
+        district: formData.district.trim(),
+        sub_district: formData.sub_district ? formData.sub_district.trim() : '',
+        village: formData.village ? formData.village.trim() : '',
+        survey_khasra_number: formData.survey_khasra_number ? formData.survey_khasra_number.trim() : '',
+        area_hectares: finalHa,
+        latitude: formData.latitude !== '' && formData.latitude !== null && !isNaN(Number(formData.latitude))
+          ? parseFloat(Number(formData.latitude).toFixed(6))
+          : null,
+        longitude: formData.longitude !== '' && formData.longitude !== null && !isNaN(Number(formData.longitude))
+          ? parseFloat(Number(formData.longitude).toFixed(6))
+          : null,
+        soil_type: formData.soil_type || 'BLACK',
+        soil_ph: formData.soil_ph !== '' && formData.soil_ph !== null && !isNaN(Number(formData.soil_ph))
+          ? parseFloat(Number(formData.soil_ph).toFixed(2))
+          : null,
+        nitrogen_n: formData.nitrogen_n !== '' && formData.nitrogen_n !== null && !isNaN(Number(formData.nitrogen_n))
+          ? parseFloat(Number(formData.nitrogen_n).toFixed(2))
+          : null,
+        phosphorus_p: formData.phosphorus_p !== '' && formData.phosphorus_p !== null && !isNaN(Number(formData.phosphorus_p))
+          ? parseFloat(Number(formData.phosphorus_p).toFixed(2))
+          : null,
+        potassium_k: formData.potassium_k !== '' && formData.potassium_k !== null && !isNaN(Number(formData.potassium_k))
+          ? parseFloat(Number(formData.potassium_k).toFixed(2))
+          : null,
+        organic_carbon_pct: formData.organic_carbon_pct !== '' && formData.organic_carbon_pct !== null && !isNaN(Number(formData.organic_carbon_pct))
+          ? parseFloat(Number(formData.organic_carbon_pct).toFixed(2))
+          : null,
+        irrigation_source: formData.irrigation_source || 'BOREWELL',
+        irrigation_method: formData.irrigation_method || 'DRIP',
+        has_water_storage: Boolean(formData.has_water_storage),
+        previous_crop: formData.previous_crop ? formData.previous_crop.trim() : '',
         boundary_geojson: boundaryGeojson,
       };
 
       await farmService.createFarm(payload);
-      setSuccess('Farm plot and satellite boundary registered successfully! Redirecting...');
+      setSuccess('Farm parcel and satellite boundary registered successfully! Redirecting...');
       setTimeout(() => {
         navigate('/dashboard/farms');
-      }, 1200);
+      }, 1000);
     } catch (err) {
       const msg = err.response?.data
         ? Object.entries(err.response.data)
@@ -206,8 +325,33 @@ export default function AddFarmPage() {
     }
   };
 
+  const handleBoundaryChange = (geojson, calculatedHa) => {
+    setBoundaryGeojson(geojson);
+    if (calculatedHa && calculatedHa > 0) {
+      const activeUnit = areaUnitRef.current || 'acres';
+      let val = calculatedHa;
+      if (activeUnit === 'acres') {
+        val = calculatedHa * 2.47105;
+      } else if (activeUnit === 'guntha') {
+        val = calculatedHa * 100.0;
+      }
+      const formatted = activeUnit === 'guntha'
+        ? parseFloat(val.toFixed(1)).toString()
+        : parseFloat(val.toFixed(2)).toString();
+      setAreaValue(formatted);
+      setFormData((prev) => ({
+        ...prev,
+        area_hectares: parseFloat(calculatedHa.toFixed(4))
+      }));
+      setAreaCalculatedFromMap(true);
+    } else if (!geojson) {
+      setAreaCalculatedFromMap(false);
+    }
+  };
+
   const handleAreaChange = (val, unit = areaUnit) => {
     setAreaValue(val);
+    setAreaCalculatedFromMap(false); // Farmer manually entered/adjusted
     const num = parseFloat(val) || 0;
     let ha = num;
     if (unit === 'acres') {
@@ -217,7 +361,7 @@ export default function AddFarmPage() {
     }
     setFormData((prev) => ({
       ...prev,
-      area_hectares: Math.max(0.01, parseFloat(ha.toFixed(4)))
+      area_hectares: ha > 0 ? parseFloat(ha.toFixed(4)) : ''
     }));
   };
 
@@ -233,10 +377,16 @@ export default function AddFarmPage() {
     else if (newUnit === 'guntha') newVal = currentHa * 100.0;
 
     setAreaUnit(newUnit);
-    setAreaValue(newVal > 0 ? parseFloat(newVal.toFixed(2)).toString() : '');
+    setAreaValue(
+      newVal > 0
+        ? (newUnit === 'guntha'
+            ? parseFloat(newVal.toFixed(1)).toString()
+            : parseFloat(newVal.toFixed(2)).toString())
+        : ''
+    );
     setFormData((prev) => ({
       ...prev,
-      area_hectares: Math.max(0.01, parseFloat(currentHa.toFixed(4)))
+      area_hectares: currentHa > 0 ? parseFloat(currentHa.toFixed(4)) : ''
     }));
   };
 
@@ -297,7 +447,7 @@ export default function AddFarmPage() {
               value={formData.farm_name}
               onChange={(e) => setFormData({ ...formData, farm_name: e.target.value })}
               className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#174C32]"
-              placeholder="e.g. Sahyadri Valley Farms - Plot 2"
+              placeholder="e.g. North Ridge Plot, Shinde Farm, Kolhapur Cane Parcel"
             />
           </div>
 
@@ -306,7 +456,7 @@ export default function AddFarmPage() {
               <label className="block text-xs font-semibold text-gray-700 mb-1">State *</label>
               <select
                 value={formData.state}
-                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                onChange={(e) => handleStateChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#174C32]"
               >
                 {states.map((st) => (
@@ -321,9 +471,9 @@ export default function AddFarmPage() {
                 type="text"
                 required
                 value={formData.district}
-                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                onChange={(e) => handleDistrictChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#174C32]"
-                placeholder="e.g. Nashik"
+                placeholder="e.g. Kolhapur, Pune, Nashik, Surat"
               />
             </div>
 
@@ -384,8 +534,14 @@ export default function AddFarmPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-gray-700">
-                  Parcel Area *
+                <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  <span>Parcel Area *</span>
+                  {areaCalculatedFromMap && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                      Map Derived
+                    </span>
+                  )}
                 </label>
                 {/* Unit Switcher */}
                 <div className="flex items-center bg-gray-100 p-0.5 rounded-lg border border-gray-200 text-[10px]">
@@ -427,8 +583,12 @@ export default function AddFarmPage() {
                   required
                   value={areaValue}
                   onChange={(e) => handleAreaChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#174C32] pr-14"
-                  placeholder={`Area in ${areaUnit}`}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#174C32] pr-14 ${
+                    areaCalculatedFromMap
+                      ? 'border-emerald-400 bg-emerald-50/20 font-semibold text-emerald-950'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder={`Enter area (e.g. ${areaUnit === 'acres' ? '3.5' : areaUnit === 'guntha' ? '120' : '1.5'})`}
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-bold uppercase pointer-events-none">
                   {areaUnit === 'acres' ? 'Ac' : areaUnit === 'guntha' ? 'Guntha' : 'Ha'}
@@ -438,6 +598,11 @@ export default function AddFarmPage() {
               <div className="text-[11px] text-gray-500 mt-1 block">
                 ≈ <span className="font-semibold text-gray-700">{currentAcres} Ac</span> &bull; <span className="font-semibold text-gray-700">{currentHa} Ha</span> &bull; <span className="font-semibold text-gray-700">{currentGuntha} Guntha</span>
               </div>
+              {areaCalculatedFromMap && (
+                <div className="text-[10px] text-emerald-700 font-medium mt-1 flex items-center gap-1 bg-emerald-50/80 border border-emerald-200/60 px-2 py-0.5 rounded-md">
+                  <span>📐 Automatically calculated from GIS satellite map boundary</span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -490,16 +655,19 @@ export default function AddFarmPage() {
                 onLocationChange={(lat, lng) => {
                   setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
                 }}
-                onBoundaryChange={(geojson) => {
-                  setBoundaryGeojson(geojson);
-                }}
+                onBoundaryChange={handleBoundaryChange}
               />
             </div>
             {boundaryGeojson && (
-              <div className="mt-2 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-xl px-3 py-2 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>
-                  Parcel boundary polygon captured ({boundaryGeojson.coordinates?.[0]?.length || 0} vertices). GeoJSON will be saved to your farm profile.
+              <div className="mt-2 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <span>
+                    Parcel boundary polygon captured ({boundaryGeojson.coordinates?.[0]?.length || 0} vertices). Calculated Area: <strong>{currentAcres} Acres</strong> ({currentHa} Ha / {currentGuntha} Guntha).
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md shrink-0">
+                  Auto-Populated in Form
                 </span>
               </div>
             )}

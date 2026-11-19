@@ -15,7 +15,7 @@ export default function HowItWorksPage() {
     {
       step: "02",
       title: "Run Pre-Sowing Yield Estimation",
-      desc: "Select the intended crop (e.g. Soybean, Wheat, Cotton) and cropping season. AGROVISION automatically fetches 10-year historical climate patterns, regional soil benchmarks, and outputs baseline yield potential (kg/ha) with SHAP factor contributions.",
+      desc: "Select the intended crop (e.g. Soybean, Wheat, Cotton) and cropping season. AGROVISION automatically fetches regional climate patterns, soil benchmarks, and outputs baseline yield potential (kg/ha) with key growth factor contributions.",
       icon: Sprout
     },
     {

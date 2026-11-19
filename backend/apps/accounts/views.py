@@ -1,13 +1,14 @@
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, FarmerProfileSerializer
 from .models import FarmerProfile
 from apps.notifications.email_service import send_welcome_email
 
 User = get_user_model()
+
 
 class RegisterView(generics.CreateAPIView):
     """Register a new user (Farmer, Admin, Expert) with an optional FarmerProfile."""
@@ -20,8 +21,8 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         user_data = UserSerializer(user).data
+        refresh = RefreshToken.for_user(user)
 
-        # Automatically dispatch welcome email to user's registered email
         email_sent = False
         try:
             email_sent = send_welcome_email(user)
@@ -32,6 +33,8 @@ class RegisterView(generics.CreateAPIView):
             "message": "User registered successfully",
             "welcome_email_sent": email_sent,
             "registered_email": user.email,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
             "user": user_data
         }, status=status.HTTP_201_CREATED)
 
@@ -55,12 +58,30 @@ class CurrentUserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def perform_update(self, serializer):
+        user = serializer.save()
+        try:
+            from apps.weather.weather_service import sync_user_location_weather
+            sync_user_location_weather(user)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Error syncing weather on profile update: {e}")
 
-class UpdateFarmerProfileView(generics.UpdateAPIView):
-    """Update farmer-specific profile details (land area, crops, PM-KISAN, soil card)."""
+
+class UpdateFarmerProfileView(generics.RetrieveUpdateAPIView):
+    """Retrieve or update farmer-specific profile details (land area, crops, PM-KISAN, soil card)."""
     serializer_class = FarmerProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         profile, _ = FarmerProfile.objects.get_or_create(user=self.request.user)
         return profile
+
+    def perform_update(self, serializer):
+        profile = serializer.save()
+        try:
+            from apps.weather.weather_service import sync_user_location_weather
+            sync_user_location_weather(profile.user)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Error syncing weather on farmer profile update: {e}")

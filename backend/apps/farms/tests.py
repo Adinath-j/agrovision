@@ -122,3 +122,41 @@ class FarmManagementAPITests(TestCase):
         self.assertIn('nitrogen_n', res.data)
         self.assertIn('phosphorus_p', res.data)
         self.assertIn('potassium_k', res.data)
+
+    def test_soil_card_ocr_accurate_text_extraction(self):
+        import io
+        from PIL import Image, ImageDraw, ImageFont
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        img = Image.new('RGB', (1000, 500), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        try:
+            font = ImageFont.truetype('arial.ttf', 24)
+        except Exception:
+            font = ImageFont.load_default()
+
+        d.text((50, 40), 'GOVERNMENT OF INDIA - SOIL HEALTH CARD', fill=(0, 0, 0), font=font)
+        d.text((50, 80), 'Card No: MH-NSK-2024-8841   Khasra No: 74/2A', fill=(0, 0, 0), font=font)
+        d.text((50, 140), '1. Soil Reaction (pH): 7.6 Neutral', fill=(0, 0, 0), font=font)
+        d.text((50, 190), '2. Electrical Conductivity (EC): 0.42 dS/m', fill=(0, 0, 0), font=font)
+        d.text((50, 240), '3. Organic Carbon (OC): 0.68 % Medium', fill=(0, 0, 0), font=font)
+        d.text((50, 290), '4. Available Nitrogen (N): 245.0 kg/ha', fill=(0, 0, 0), font=font)
+        d.text((50, 340), '5. Available Phosphorus (P): 22.5 kg/ha', fill=(0, 0, 0), font=font)
+        d.text((50, 390), '6. Available Potassium (K): 295.0 kg/ha', fill=(0, 0, 0), font=font)
+
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG')
+        buf.seek(0)
+        uploaded = SimpleUploadedFile("real_soil_card.jpg", buf.read(), content_type="image/jpeg")
+
+        url = '/api/farms/soil-card/ocr/'
+        res = self.client.post(url, {'card_image': uploaded}, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['status'], 'success')
+        self.assertEqual(res.data['ph'], 7.6)
+        self.assertEqual(res.data['organic_carbon_pct'], 0.68)
+        self.assertEqual(res.data['nitrogen_n'], 245.0)
+        self.assertEqual(res.data['phosphorus_p'], 22.5)
+        self.assertEqual(res.data['potassium_k'], 295.0)
+        self.assertEqual(res.data['card_number'], 'MH-NSK-2024-8841')
+        self.assertEqual(res.data['survey_khasra_number'], '74/2A')

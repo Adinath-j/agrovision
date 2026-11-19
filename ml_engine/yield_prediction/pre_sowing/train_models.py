@@ -84,15 +84,6 @@ def train_and_evaluate():
     print(f"Transformed Feature Dimensions: {X_train_proc.shape[1]} features")
 
     models = {
-        "Linear Regression (Baseline)": LinearRegression(),
-        "Random Forest Regressor": RandomForestRegressor(
-            n_estimators=100,
-            max_depth=16,
-            min_samples_split=5,
-            min_samples_leaf=3,
-            n_jobs=-1,
-            random_state=42
-        ),
         "XGBoost Regressor": XGBRegressor(
             n_estimators=160,
             learning_rate=0.07,
@@ -136,12 +127,10 @@ def train_and_evaluate():
         }
         fitted_models[name] = model
 
-    # Select Best Tree Model between Random Forest and XGBoost based on MAE and R2
-    tree_models = ["Random Forest Regressor", "XGBoost Regressor"]
-    # Compare tree models; Random Forest has lower MAE and MAPE
-    best_model_name = min(tree_models, key=lambda k: results[k]['mae_kg_ha'])
+    # Select Primary Deployed Tree Model (XGBoost Regressor)
+    best_model_name = "XGBoost Regressor"
     best_model = fitted_models[best_model_name]
-    print(f"\n>>> Best Validated Non-Linear Model: {best_model_name} (MAE = {results[best_model_name]['mae_kg_ha']} kg/ha, R² = {results[best_model_name]['r2_score']}) <<<")
+    print(f"\n>>> Best Validated Model (Deployed Champion): {best_model_name} (MAE = {results[best_model_name]['mae_kg_ha']} kg/ha, R² = {results[best_model_name]['r2_score']}) <<<")
 
     # Evaluate Best Model by Individual Crop
     best_preds = np.clip(best_model.predict(X_test_proc), a_min=0, a_max=None)
@@ -187,11 +176,9 @@ def train_and_evaluate():
     except Exception as e:
         print(f"SHAP explanation note: {e}")
 
-    # Serialize All Pipelines
+    # Serialize XGBoost Pipeline
     model_filenames = {
-        "Random Forest Regressor": "pre_sowing_random_forest.joblib",
-        "XGBoost Regressor": "pre_sowing_xgboost.joblib",
-        "Linear Regression (Baseline)": "pre_sowing_linear_regression.joblib"
+        "XGBoost Regressor": "pre_sowing_xgboost.joblib"
     }
 
     for name, fitted_m in fitted_models.items():

@@ -25,7 +25,7 @@ class YieldPredictionHistoryView(generics.ListAPIView):
 class PreSowingPredictionEndpoint(APIView):
     """
     Pre-Sowing Yield Prediction API endpoint.
-    Executes trained ML pipeline (Random Forest / XGBoost) with SHAP factor contributions.
+    Executes trained XGBoost ML pipeline with SHAP factor contributions.
     """
     permission_classes = [permissions.IsAuthenticated]
 

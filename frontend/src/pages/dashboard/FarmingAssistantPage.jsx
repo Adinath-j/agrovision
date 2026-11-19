@@ -21,7 +21,7 @@ import {
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-export default function AssistantPreviewPage() {
+export default function FarmingAssistantPage() {
   const { user } = useAuth();
   const [farms, setFarms] = useState([]);
   const [selectedFarmId, setSelectedFarmId] = useState('');

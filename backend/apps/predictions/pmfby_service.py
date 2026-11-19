@@ -36,13 +36,19 @@ def calculate_pmfby_claim(
     Computes government PMFBY crop insurance actuarial claim settlement estimates.
     """
     crop_name = crop.name if crop else 'Soybean'
-    params = PMFBY_CROP_PARAMETERS.get(crop_name, PMFBY_CROP_PARAMETERS['Soybean'])
+    params = PMFBY_CROP_PARAMETERS.get(crop_name)
 
     area_ha = float(farm.area_hectares) if farm else 2.5
     indemnity_level = indemnity_level_pct / 100.0
 
     # 1. Historical 7-year district average yield & Threshold Yield (TY)
-    hist_yield = params['hist_benchmark_yield']
+    if params:
+        hist_yield = params['hist_benchmark_yield']
+        sum_insured_per_ha = params['sum_insured_ha']
+    else:
+        hist_yield = float(crop.standard_national_yield_kg_per_ha) if (crop and crop.standard_national_yield_kg_per_ha) else 1650.0
+        sum_insured_per_ha = 55000
+
     threshold_yield = round(hist_yield * indemnity_level, 2)
 
     # 2. Predicted actual yield (AY)

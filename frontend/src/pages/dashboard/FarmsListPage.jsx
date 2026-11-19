@@ -161,7 +161,7 @@ export default function FarmsListPage() {
       {/* Farms Grid */}
       {loading ? (
         <div className="py-16 text-center text-gray-500 text-sm">
-          Loading farm holdings from PostgreSQL...
+          Loading your farm holdings...
         </div>
       ) : farms.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-gray-200/80 space-y-4">
@@ -344,7 +344,9 @@ export default function FarmsListPage() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Soil Health Card Profile</h3>
-                <p className="text-xs text-gray-500">{selectedFarm.farm_name}</p>
+                <p className="text-xs text-gray-500">
+                  {selectedFarm.farm_name} &bull; {selectedFarm.village ? `${selectedFarm.village}, ` : ''}{selectedFarm.district}, {selectedFarm.state}
+                </p>
               </div>
               <button
                 onClick={() => setSoilModalOpen(false)}
@@ -355,35 +357,104 @@ export default function FarmsListPage() {
             </div>
 
             <div className="space-y-4">
+              <div className="flex items-center justify-between bg-emerald-50/60 p-3 rounded-2xl border border-emerald-100 text-xs">
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase font-bold block">Soil Classification</span>
+                  <span className="font-bold text-emerald-900">{selectedFarm.soil_type_display || selectedFarm.soil_type}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-gray-500 uppercase font-bold block">Survey / Khasra</span>
+                  <span className="font-mono text-gray-800 font-semibold">{selectedFarm.survey_khasra_number || 'Not Recorded'}</span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200">
                   <span className="text-[10px] text-gray-500 block uppercase font-bold">Soil pH</span>
-                  <span className="text-lg font-extrabold text-[#174C32]">{selectedFarm.soil_ph || '6.85'}</span>
-                  <span className="text-[10px] text-emerald-700 block">Neutral</span>
+                  <span className="text-lg font-extrabold text-[#174C32]">
+                    {selectedFarm.soil_ph ? selectedFarm.soil_ph : 'N/A'}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 block">
+                    {selectedFarm.soil_ph
+                      ? Number(selectedFarm.soil_ph) < 6.5
+                        ? 'Slightly Acidic'
+                        : Number(selectedFarm.soil_ph) <= 7.8
+                        ? 'Neutral'
+                        : 'Alkaline'
+                      : 'Estimated'}
+                  </span>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200">
                   <span className="text-[10px] text-gray-500 block uppercase font-bold">Nitrogen (N)</span>
-                  <span className="text-lg font-extrabold text-[#174C32]">{selectedFarm.nitrogen_n || '240'}</span>
-                  <span className="text-[10px] text-gray-500 block">kg/ha</span>
+                  <span className="text-lg font-extrabold text-[#174C32]">
+                    {selectedFarm.nitrogen_n ? selectedFarm.nitrogen_n : 'N/A'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 block">
+                    {selectedFarm.nitrogen_n ? 'kg/ha' : 'Estimated'}
+                  </span>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200">
                   <span className="text-[10px] text-gray-500 block uppercase font-bold">Phosphorus (P)</span>
-                  <span className="text-lg font-extrabold text-[#174C32]">{selectedFarm.phosphorus_p || '22.5'}</span>
-                  <span className="text-[10px] text-gray-500 block">kg/ha</span>
+                  <span className="text-lg font-extrabold text-[#174C32]">
+                    {selectedFarm.phosphorus_p ? selectedFarm.phosphorus_p : 'N/A'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 block">
+                    {selectedFarm.phosphorus_p ? 'kg/ha' : 'Estimated'}
+                  </span>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200">
                   <span className="text-[10px] text-gray-500 block uppercase font-bold">Potassium (K)</span>
-                  <span className="text-lg font-extrabold text-[#174C32]">{selectedFarm.potassium_k || '295'}</span>
-                  <span className="text-[10px] text-gray-500 block">kg/ha</span>
+                  <span className="text-lg font-extrabold text-[#174C32]">
+                    {selectedFarm.potassium_k ? selectedFarm.potassium_k : 'N/A'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 block">
+                    {selectedFarm.potassium_k ? 'kg/ha' : 'Estimated'}
+                  </span>
                 </div>
               </div>
+
+              {selectedFarm.organic_carbon_pct && (
+                <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs flex justify-between items-center">
+                  <span className="text-gray-600 font-medium">Organic Carbon (OC %):</span>
+                  <span className="font-bold text-[#174C32]">{selectedFarm.organic_carbon_pct}%</span>
+                </div>
+              )}
 
               <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200/70 text-xs text-emerald-900 space-y-1">
                 <div className="font-bold">Agronomic Evaluation:</div>
                 <p>
-                  Soil profile is fertile black cotton loam with balanced macronutrient proportions. Highly suitable for Kharif Soybean and Rabi Wheat rotations.
+                  Soil profile for <strong>{selectedFarm.farm_name}</strong> is classified as {selectedFarm.soil_type_display || selectedFarm.soil_type}
+                  {selectedFarm.soil_ph ? ` with a pH of ${selectedFarm.soil_ph}` : ''} in {selectedFarm.district}, {selectedFarm.state}.
+                  {selectedFarm.nitrogen_n && selectedFarm.phosphorus_p && selectedFarm.potassium_k
+                    ? ` Macronutrient inventory (N: ${selectedFarm.nitrogen_n}, P: ${selectedFarm.phosphorus_p}, K: ${selectedFarm.potassium_k} kg/ha) actively informs fertilizer dosage.`
+                    : ' Baseline regional nutrient benchmarks active until official lab card upload.'}
                 </p>
               </div>
+
+              {/* Historical Soil Testing Records */}
+              {soilRecords.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-gray-100">
+                  <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block">
+                    Soil Lab Testing History ({soilRecords.length})
+                  </span>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {soilRecords.map((rec) => (
+                      <div key={rec.id} className="p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs space-y-1">
+                        <div className="flex justify-between items-center font-semibold text-gray-800">
+                          <span>{rec.lab_name || 'Soil Health Testing Lab'}</span>
+                          <span className="text-gray-400 font-mono text-[10px]">{rec.test_date}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-600 flex gap-3">
+                          {rec.ph && <span>pH: <strong>{rec.ph}</strong></span>}
+                          {rec.nitrogen_kg_ha && <span>N: <strong>{rec.nitrogen_kg_ha}</strong></span>}
+                          {rec.phosphorus_kg_ha && <span>P: <strong>{rec.phosphorus_kg_ha}</strong></span>}
+                          {rec.potassium_kg_ha && <span>K: <strong>{rec.potassium_kg_ha}</strong></span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="text-right pt-2 border-t border-gray-100">
